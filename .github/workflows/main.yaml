@@ -11,4 +11,4 @@ jobs:
           minikube version: 'v1.21.0'
           kubernetes version: 'v1.21.1'
           github token: ${{ secrets.GITHUB_TOKEN }}
-      - run: kubectl get nodes
+      - run: ./plano test
