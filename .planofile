@@ -1,0 +1,25 @@
+from skewer import *
+
+@command
+def generate(app):
+    generate_readme("skewer.yaml", "README.md")
+
+@command
+def render(app):
+    generate(app)
+    run(f"pandoc -o README.html README.md")
+
+@command
+def test(app):
+    with temp_file() as temp:
+        generate_readme("skewer.yaml", temp)
+
+    run_steps_on_minikube("skewer.yaml")
+
+@command
+def test_external(app, public_kubeconfig, private_kubeconfig):
+    run_steps_external("skewer.yaml", public=public_kubeconfig, private=private_kubeconfig)
+
+# curl -i http://0.0.0.0:8080/api/send-request -d text=abc
+# curl -i http://0.0.0.0:8080/api/responses
+# curl -i http://0.0.0.0:8080/api/worker-status

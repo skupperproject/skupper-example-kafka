@@ -1,0 +1,7 @@
+FROM registry.access.redhat.com/ubi8/ubi-minimal
+
+RUN microdnf -y install java-11-openjdk-headless && microdnf clean all
+
+ADD target/ /app/target
+
+ENTRYPOINT ["java", "-jar", "/app/target/quarkus-app/quarkus-run.jar"]

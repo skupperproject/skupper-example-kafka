@@ -1,0 +1,68 @@
+title: Accessing a Kafka cluster using Skupper
+subtitle: |-
+  Use public cloud resources to process data from a private Kafka cluster
+overview: |-
+  XXX
+prerequisites: !string prerequisites
+contexts:
+  public:
+    kubeconfig: ~/.kube/config-public
+    namespace: public
+  private:
+    kubeconfig: ~/.kube/config-private
+    namespace: private
+steps:
+  - title: Configure separate console sessions
+    preamble: !string configure_separate_console_sessions_preamble
+    commands:
+      public:
+        - run: export KUBECONFIG=~/.kube/config-public
+      private:
+        - run: export KUBECONFIG=~/.kube/config-private
+  - title: Log in to your clusters
+    preamble: !string log_in_to_your_clusters_preamble
+  - title: Set the current namespaces
+    preamble: !string set_the_current_namespaces_preamble
+    commands:
+      public:
+        - run: kubectl create namespace public
+        - run: kubectl config set-context --current --namespace public
+      private:
+        - run: kubectl create namespace private
+        - run: kubectl config set-context --current --namespace private
+  - title: Install Skupper in your namespaces
+    preamble: !string install_skupper_in_your_namespaces_preamble
+    commands:
+      public:
+        - run: skupper init
+          await: [deployment/skupper-service-controller, deployment/skupper-router]
+      private:
+        - run: skupper init --ingress none
+          await: [deployment/skupper-service-controller, deployment/skupper-router]
+  - title: Link your namespaces
+    preamble: !string link_your_namespaces_preamble
+    commands:
+      public:
+        - run: skupper token create ~/public.token
+      private:
+        - run: skupper link create ~/public.token
+        - run: skupper link status --wait 30
+  - title: Deploy your services
+    commands:
+      private:
+        - run: kubectl create -f strimzi.yaml
+        - run: kubectl apply -f kafka-cluster.yaml
+        - run: kubectl wait --for condition=ready --timeout 360s kafka/kafka-cluster
+  - title: Expose your services
+    commands:
+      private:
+        - run: skupper expose statefulset kafka-cluster-kafka --headless --port 9092
+      public:
+        - run: kubectl get services
+          await: [service/kafka-cluster-kafka-brokers]
+  - title: Test
+    commands:
+      public:
+        - run: kubectl run -it --rm --restart Never client --image quay.io/skupper/kafka-example-client --env BOOTSTRAP_SERVERS=kafka-cluster-kafka-brokers:9092
+
+# kubectl delete namespace/public namespace/private && kubectl delete -f strimzi.yaml

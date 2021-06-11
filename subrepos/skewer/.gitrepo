@@ -1,0 +1,12 @@
+; DO NOT EDIT (unless you know what you are doing)
+;
+; This subdirectory is a git "subrepo", and this file is maintained by the
+; git-subrepo command. See https://github.com/git-commands/git-subrepo#readme
+;
+[subrepo]
+	remote = git@github.com:skupperproject/skewer.git
+	branch = main
+	commit = 35ef26b6fb6d1a4054e8a9311244d5b31425d36a
+	parent = 6adf10bafe95b4c7d2617912312ab2bd3cb51558
+	method = merge
+	cmdver = 0.4.3

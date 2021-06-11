@@ -1,0 +1,22 @@
+@command
+def build(app):
+    run("mvn package")
+
+@command(name="run")
+def run_(app):
+    build(app)
+    run("java -jar target/quarkus-app/quarkus-run.jar")
+
+@command
+def clean(app):
+    run("mvn clean")
+
+@command
+def build_image(app):
+    build(app)
+    run("podman build -t quay.io/skupper/kafka-example-client .")
+
+@command
+def push_image(app):
+    build_image(app)
+    run("podman push quay.io/skupper/kafka-example-client")
