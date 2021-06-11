@@ -13,5 +13,5 @@ jobs:
           github token: ${{ secrets.GITHUB_TOKEN }}
       - run: mkdir -p "$HOME/.local/bin"
       - run: echo "$HOME/.local/bin" >> $GITHUB_PATH
-      - run: curl -fL https://github.com/skupperproject/skupper/releases/download/0.6.0/skupper-cli-0.6.0-linux-amd64.tgz | tar -C "$HOME/.local/bin" -xf -
+      - run: curl -fL https://github.com/skupperproject/skupper/releases/download/0.6.0/skupper-cli-0.6.0-linux-amd64.tgz | tar -C "$HOME/.local/bin" -xzf -
       - run: ./plano test
