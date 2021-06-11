@@ -63,6 +63,6 @@ steps:
   - title: Test
     commands:
       public:
-        - run: kubectl run -it --rm --restart Never client --image quay.io/skupper/kafka-example-client --env BOOTSTRAP_SERVERS=kafka-cluster-kafka-brokers:9092
+        - run: kubectl run -i --rm --restart Never client --image quay.io/skupper/kafka-example-client --env BOOTSTRAP_SERVERS=kafka-cluster-kafka-brokers:9092
 
 # kubectl delete namespace/public namespace/private && kubectl delete -f strimzi.yaml
