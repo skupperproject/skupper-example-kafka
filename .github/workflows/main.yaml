@@ -11,4 +11,5 @@ jobs:
           minikube version: 'v1.21.0'
           kubernetes version: 'v1.21.1'
           github token: ${{ secrets.GITHUB_TOKEN }}
+      - run: curl -fL https://github.com/skupperproject/skupper/releases/download/0.6.0/skupper-cli-0.6.0-linux-amd64.tgz | tar -C ~/bin -xzf -
       - run: ./plano test
