@@ -56,13 +56,13 @@ steps:
   - title: Expose your services
     commands:
       private:
-        - run: skupper expose statefulset kafka-cluster-kafka --headless --port 9092
+        - run: skupper expose statefulset/kafka-cluster-kafka --headless --port 9092
       public:
         - run: kubectl get services
           await: [service/kafka-cluster-kafka-brokers]
   - title: Test
     commands:
       public:
-        - run: kubectl run -i --rm --restart Never client --image quay.io/skupper/kafka-example-client --env BOOTSTRAP_SERVERS=kafka-cluster-kafka-brokers:9092
+        - run: kubectl run --rm --wait --restart Never client --image quay.io/skupper/kafka-example-client --env BOOTSTRAP_SERVERS=kafka-cluster-kafka-brokers:9092
 
 # kubectl delete namespace/public namespace/private && kubectl delete -f strimzi.yaml
