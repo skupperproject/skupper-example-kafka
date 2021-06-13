@@ -161,7 +161,7 @@ Console for _private_:
 ~~~ shell
 kubectl create -f strimzi.yaml
 kubectl apply -f kafka-cluster.yaml
-kubectl wait --for condition=ready --timeout 360s kafka/kafka-cluster
+kubectl wait --for condition=ready --timeout 360s kafka/cluster1
 ~~~
 
 ## Step 7: Expose your services
@@ -169,7 +169,7 @@ kubectl wait --for condition=ready --timeout 360s kafka/kafka-cluster
 Console for _private_:
 
 ~~~ shell
-skupper expose statefulset kafka-cluster-kafka --headless --port 9092
+skupper expose statefulset/cluster1-kafka --headless --port 9092
 ~~~
 
 Console for _public_:
@@ -183,5 +183,5 @@ kubectl get services
 Console for _public_:
 
 ~~~ shell
-kubectl run -it --rm --restart Never client --image quay.io/skupper/kafka-example-client --env BOOTSTRAP_SERVERS=kafka-cluster-kafka-brokers:9092
+kubectl run --attach --rm --restart Never client --image quay.io/skupper/kafka-example-client --env BOOTSTRAP_SERVERS=cluster1-kafka-brokers:9092
 ~~~
