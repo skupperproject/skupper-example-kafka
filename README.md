@@ -183,5 +183,5 @@ kubectl get services
 Console for _public_:
 
 ~~~ shell
-kubectl run --attach --rm --restart Never client --image quay.io/skupper/kafka-example-client --env BOOTSTRAP_SERVERS=cluster1-kafka-brokers:9092
+kubectl run client --attach --rm --restart Never --image quay.io/skupper/kafka-example-client --env BOOTSTRAP_SERVERS=cluster1-kafka-brokers:9092
 ~~~
