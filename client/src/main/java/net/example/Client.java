@@ -31,7 +31,7 @@ public class Client implements QuarkusApplication {
                 System.out.println("Sent " + message);
             }
 
-            boolean completed = completion.await(10, TimeUnit.SECONDS);
+            boolean completed = completion.await(30, TimeUnit.SECONDS);
 
             if (!completed) {
                 System.out.println("Result: Timed out!");
