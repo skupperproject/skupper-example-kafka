@@ -21,7 +21,9 @@ public class Client implements QuarkusApplication {
     CountDownLatch completion = new CountDownLatch(desired);
 
     @Override
-    public int run(String... args) {
+    public int run(String... args) throws Exception {
+        java.lang.Thread.sleep(3000);
+
         try {
             for (int i = 1; i <= desired; i++) {
                 String message = "message " + i;
