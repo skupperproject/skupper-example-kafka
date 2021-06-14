@@ -51,7 +51,7 @@ steps:
     commands:
       private:
         - run: kubectl create -f strimzi.yaml
-        - run: kubectl apply -f kafka-cluster.yaml
+        - run: kubectl apply -f cluster1.yaml
         - run: kubectl wait --for condition=ready --timeout 360s kafka/cluster1
   - title: Expose your services
     commands:

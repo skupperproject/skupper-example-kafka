@@ -160,7 +160,7 @@ Console for _private_:
 
 ~~~ shell
 kubectl create -f strimzi.yaml
-kubectl apply -f kafka-cluster.yaml
+kubectl apply -f cluster1.yaml
 kubectl wait --for condition=ready --timeout 360s kafka/cluster1
 ~~~
 
