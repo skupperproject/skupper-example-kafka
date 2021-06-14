@@ -12,7 +12,7 @@ overview: |-
     The cluster has a topic named "topic1".
 
   * A Kafka client running in the public cloud.  It sends 10 messages
-    and then receives them back.
+    to "topic1" and then receives them back.
 
   The example uses two Kubernetes namespaces, "private" and "public",
   to represent the private data center and public cloud.
@@ -76,7 +76,7 @@ steps:
       public:
         - run: kubectl get services
           await: [service/cluster1-kafka-brokers]
-  - title: Test the application
+  - title: Run the client
     commands:
       public:
         - run: kubectl run client --attach --rm --restart Never --image quay.io/skupper/kafka-example-client --env BOOTSTRAP_SERVERS=cluster1-kafka-brokers:9092
