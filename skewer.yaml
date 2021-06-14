@@ -53,6 +53,8 @@ steps:
         - run: kubectl create -f strimzi.yaml
         - run: kubectl apply -f cluster1.yaml
         - run: kubectl wait --for condition=ready --timeout 360s kafka/cluster1
+        - run: kubectl apply -f topic1.yaml
+        # XXX wait?
   - title: Expose your services
     commands:
       private:
