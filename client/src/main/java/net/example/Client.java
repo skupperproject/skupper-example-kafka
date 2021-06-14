@@ -37,7 +37,7 @@ public class Client implements QuarkusApplication {
         } catch (Exception e) {
             System.out.println("Result: Error!");
             e.printStackTrace();
-            System.exit(1);
+            return 1;
         }
 
         return 0;
