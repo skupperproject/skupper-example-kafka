@@ -67,7 +67,8 @@ steps:
         - run: kubectl apply -f cluster1.yaml
         - run: kubectl wait --for condition=ready --timeout 360s kafka/cluster1
         - run: kubectl apply -f topic1.yaml
-        - run: kubectl wait --for condition=ready --timeout 180s kafka/topic1
+          sleep: 10
+        # - run: kubectl wait --for condition=ready --timeout 180s kafka/topic1
   - title: Expose the Kafka cluster
     commands:
       private:
