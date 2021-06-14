@@ -1,5 +1,7 @@
 # Accessing a Kafka cluster using Skupper
 
+[![main](https://github.com/ssorj/skupper-example-kafka/actions/workflows/main.yaml/badge.svg)](https://github.com/ssorj/skupper-example-kafka/actions/workflows/main.yaml)
+
 Use public cloud resources to process data from a private Kafka cluster
 
 * [Overview](#overview)
@@ -9,13 +11,26 @@ Use public cloud resources to process data from a private Kafka cluster
 * [Step 3: Set the current namespaces](#step-3-set-the-current-namespaces)
 * [Step 4: Install Skupper in your namespaces](#step-4-install-skupper-in-your-namespaces)
 * [Step 5: Link your namespaces](#step-5-link-your-namespaces)
-* [Step 6: Deploy your services](#step-6-deploy-your-services)
-* [Step 7: Expose your services](#step-7-expose-your-services)
-* [Step 8: Test](#step-8-test)
+* [Step 6: Deploy the Kafka cluster](#step-6-deploy-the-kafka-cluster)
+* [Step 7: Expose the Kafka cluster](#step-7-expose-the-kafka-cluster)
+* [Step 8: Test the application](#step-8-test-the-application)
 
 ## Overview
 
-XXX
+This example is a simple Kafka application that shows how you can
+use Skupper to access a Kafka cluster at a remote site without
+exposing it to the public internet.
+
+It contains two services:
+
+* A Kafka cluster named "cluster1" running in a private data center.
+  The cluster has a topic named "topic1".
+
+* A Kafka client running in the public cloud.  It sends 10 messages
+  and then receives them back.
+
+The example uses two Kubernetes namespaces, "private" and "public",
+to represent the private data center and public cloud.
 
 ## Prerequisites
 
@@ -154,7 +169,7 @@ skupper link create ~/public.token
 skupper link status --wait 30
 ~~~
 
-## Step 6: Deploy your services
+## Step 6: Deploy the Kafka cluster
 
 Console for _private_:
 
@@ -162,9 +177,11 @@ Console for _private_:
 kubectl create -f strimzi.yaml
 kubectl apply -f cluster1.yaml
 kubectl wait --for condition=ready --timeout 360s kafka/cluster1
+kubectl apply -f topic1.yaml
+kubectl wait --for condition=ready --timeout 180s kafka/topic1
 ~~~
 
-## Step 7: Expose your services
+## Step 7: Expose the Kafka cluster
 
 Console for _private_:
 
@@ -178,7 +195,7 @@ Console for _public_:
 kubectl get services
 ~~~
 
-## Step 8: Test
+## Step 8: Test the application
 
 Console for _public_:
 

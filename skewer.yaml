@@ -2,7 +2,20 @@ title: Accessing a Kafka cluster using Skupper
 subtitle: |-
   Use public cloud resources to process data from a private Kafka cluster
 overview: |-
-  XXX
+  This example is a simple Kafka application that shows how you can
+  use Skupper to access a Kafka cluster at a remote site without
+  exposing it to the public internet.
+
+  It contains two services:
+
+  * A Kafka cluster named "cluster1" running in a private data center.
+    The cluster has a topic named "topic1".
+
+  * A Kafka client running in the public cloud.  It sends 10 messages
+    and then receives them back.
+
+  The example uses two Kubernetes namespaces, "private" and "public",
+  to represent the private data center and public cloud.
 prerequisites: !string prerequisites
 contexts:
   public:
@@ -47,22 +60,22 @@ steps:
       private:
         - run: skupper link create ~/public.token
         - run: skupper link status --wait 30
-  - title: Deploy your services
+  - title: Deploy the Kafka cluster
     commands:
       private:
         - run: kubectl create -f strimzi.yaml
         - run: kubectl apply -f cluster1.yaml
         - run: kubectl wait --for condition=ready --timeout 360s kafka/cluster1
         - run: kubectl apply -f topic1.yaml
-        # XXX wait?
-  - title: Expose your services
+        - run: kubectl wait --for condition=ready --timeout 180s kafka/topic1
+  - title: Expose the Kafka cluster
     commands:
       private:
         - run: skupper expose statefulset/cluster1-kafka --headless --port 9092
       public:
         - run: kubectl get services
           await: [service/cluster1-kafka-brokers]
-  - title: Test
+  - title: Test the application
     commands:
       public:
         - run: kubectl run client --attach --rm --restart Never --image quay.io/skupper/kafka-example-client --env BOOTSTRAP_SERVERS=cluster1-kafka-brokers:9092
