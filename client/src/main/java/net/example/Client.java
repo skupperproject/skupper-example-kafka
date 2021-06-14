@@ -34,13 +34,13 @@ public class Client implements QuarkusApplication {
             }
 
             System.out.println("Result: OK");
+
+            return 0;
         } catch (Exception e) {
             System.out.println("Result: Error!");
             e.printStackTrace();
             return 1;
         }
-
-        return 0;
     }
 
     @ApplicationScoped
