@@ -1,6 +1,6 @@
 title: Accessing a Kafka cluster using Skupper
-subtitle: |-
-  Use public cloud resources to process data from a private Kafka cluster
+subtitle: Use public cloud resources to process data from a private Kafka cluster
+github_actions_url: https://github.com/ssorj/skupper-example-kafka/actions/workflows/main.yaml
 overview: |-
   This example is a simple Kafka application that shows how you can
   use Skupper to access a Kafka cluster at a remote site without
