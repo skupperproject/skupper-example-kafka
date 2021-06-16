@@ -2,7 +2,19 @@ from skewer import *
 
 @command
 def generate(app):
+    """
+    Generate README.md from the data in skewer.yaml
+    """
     generate_readme("skewer.yaml", "README.md")
+
+@command
+def render(app):
+    """
+    Render README.html from the data in skewer.yaml
+    """
+    check_program("pandoc")
+    generate(app)
+    run(f"pandoc -o README.html README.md")
 
 @command
 def test(app):

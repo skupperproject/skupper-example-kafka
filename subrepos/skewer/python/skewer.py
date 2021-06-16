@@ -73,10 +73,9 @@ def run_steps_on_minikube(skewer_file):
         skewer_data = _yaml.safe_load(file)
 
     work_dir = make_temp_dir()
-    minikube_profile = "skewer"
 
     try:
-        run(f"minikube start -p {minikube_profile}")
+        run("minikube -p skewer start")
 
         contexts = skewer_data["contexts"]
 
@@ -84,53 +83,58 @@ def run_steps_on_minikube(skewer_file):
             kubeconfig = value["kubeconfig"].replace("~", work_dir)
 
             with working_env(KUBECONFIG=kubeconfig):
-                run(f"minikube update-context")
+                run("minikube -p skewer update-context")
                 check_file(ENV["KUBECONFIG"])
 
         with open("/tmp/minikube-tunnel-output", "w") as tunnel_output_file:
-            with start("minikube tunnel", output=tunnel_output_file):
-                execute_steps(work_dir, skewer_data)
+            with start("minikube -p skewer tunnel", output=tunnel_output_file):
+                _run_steps(work_dir, skewer_data)
     finally:
-        run(f"minikube delete -p {minikube_profile}")
+        run("minikube -p skewer delete")
 
 def run_steps_external(skewer_file, **kubeconfigs):
     with open(skewer_file) as file:
         skewer_data = _yaml.safe_load(file)
 
     work_dir = make_temp_dir()
-    contexts = skewer_data["contexts"]
 
     for name, kubeconfig in kubeconfigs.items():
-        contexts[name]["kubeconfig"] = kubeconfig
+        skewer_data["contexts"][name]["kubeconfig"] = kubeconfig
 
-    execute_steps(work_dir, skewer_data)
+    _run_steps(work_dir, skewer_data)
 
-def execute_steps(work_dir, skewer_data):
+def _run_steps(work_dir, skewer_data):
     contexts = skewer_data["contexts"]
 
     for step_data in skewer_data["steps"]:
-        if "commands" not in step_data:
-            continue
+        _run_step(work_dir, skewer_data, step_data)
 
-        for context_name, commands in step_data["commands"].items():
-            kubeconfig = contexts[context_name]["kubeconfig"].replace("~", work_dir)
+    if "cleaning_up" in skewer_data:
+        _run_step(work_dir, skewer_data, skewer_data["cleaning_up"])
 
-            with working_env(KUBECONFIG=kubeconfig):
-                for command in commands:
-                    run(command["run"].replace("~", work_dir), shell=True)
+def _run_step(work_dir, skewer_data, step_data):
+    if "commands" not in step_data:
+        return
 
-                    if "await" in command:
-                        for resource in command["await"]:
-                            group, name = resource.split("/", 1)
-                            await_resource(group, name)
+    for context_name, commands in step_data["commands"].items():
+        kubeconfig = skewer_data["contexts"][context_name]["kubeconfig"].replace("~", work_dir)
 
-                    if "await_external_ip" in command:
-                        for resource in command["await_external_ip"]:
-                            group, name = resource.split("/", 1)
-                            await_external_ip(group, name)
+        with working_env(KUBECONFIG=kubeconfig):
+            for command in commands:
+                run(command["run"].replace("~", work_dir), shell=True)
 
-                    if "sleep" in command:
-                        sleep(command["sleep"])
+                if "await" in command:
+                    for resource in command["await"]:
+                        group, name = resource.split("/", 1)
+                        await_resource(group, name)
+
+                if "await_external_ip" in command:
+                    for resource in command["await_external_ip"]:
+                        group, name = resource.split("/", 1)
+                        await_external_ip(group, name)
+
+                if "sleep" in command:
+                    sleep(command["sleep"])
 
 def generate_readme(skewer_file, output_file):
     with open(skewer_file) as file:
@@ -140,10 +144,26 @@ def generate_readme(skewer_file, output_file):
 
     out.append(f"# {skewer_data['title']}")
     out.append("")
-    out.append(skewer_data["subtitle"])
+
+    if "github_actions_url" in skewer_data:
+        url = skewer_data["github_actions_url"]
+        out.append(f"[![main]({url}/badge.svg)]({url})")
+        out.append("")
+
+    if "subtitle" in skewer_data:
+        out.append(f"#### {skewer_data['subtitle']}")
+        out.append("")
+
+    out.append(_strings["example_suite_para"])
     out.append("")
-    out.append("* [Overview](#overview)")
-    out.append("* [Prerequisites](#prerequisites)")
+    out.append("#### Contents")
+    out.append("")
+
+    if "overview" in skewer_data:
+        out.append("* [Overview](#overview)")
+
+    if "prerequisites" in skewer_data:
+        out.append("* [Prerequisites](#prerequisites)")
 
     for i, step_data in enumerate(skewer_data["steps"], 1):
         title = f"Step {i}: {step_data['title']}"
@@ -155,43 +175,80 @@ def generate_readme(skewer_file, output_file):
 
         out.append(f"* [{title}](#{fragment})")
 
-    out.append("")
-    out.append("## Overview")
-    out.append("")
-    out.append(skewer_data["overview"])
+    if "summary" in skewer_data:
+        out.append("* [Summary](#summary)")
+
+    if "cleaning_up" in skewer_data:
+        out.append("* [Cleaning up](#cleaning-up)")
+
+    if "next_steps" in skewer_data:
+        out.append("* [Next steps](#next-steps)")
 
     out.append("")
-    out.append("## Prerequisites")
-    out.append("")
-    out.append(skewer_data["prerequisites"])
+
+    if "overview" in skewer_data:
+        out.append("## Overview")
+        out.append("")
+        out.append(skewer_data["overview"])
+        out.append("")
+
+    if "prerequisites" in skewer_data:
+        out.append("## Prerequisites")
+        out.append("")
+        out.append(skewer_data["prerequisites"])
+        out.append("")
 
     for i, step_data in enumerate(skewer_data["steps"], 1):
-        out.append("")
         out.append(f"## Step {i}: {step_data['title']}")
+        out.append("")
+        out.append(_generate_readme_step(skewer_data, step_data))
+        out.append("")
 
-        if "preamble" in step_data:
-            out.append("")
-            out.append(step_data["preamble"])
+    if "summary" in skewer_data:
+        out.append("## Summary")
+        out.append("")
+        out.append(skewer_data["summary"])
+        out.append("")
 
-        if "commands" in step_data:
-            for context_name, commands in step_data["commands"].items():
-                namespace = skewer_data["contexts"][context_name]["namespace"]
+    if "cleaning_up" in skewer_data:
+        out.append("## Cleaning up")
+        out.append("")
+        out.append(_generate_readme_step(skewer_data, skewer_data["cleaning_up"]))
+        out.append("")
 
-                out.append("")
-                out.append(f"Console for _{namespace}_:")
-                out.append("")
-                out.append("~~~ shell")
-
-                for command in commands:
-                    out.append(command["run"])
-
-                out.append("~~~")
-
-        if "postamble" in step_data:
-            out.append("")
-            out.append(skewer_data["postamble"])
+    if "next_steps" in skewer_data:
+        out.append("## Next steps")
+        out.append("")
+        out.append(skewer_data["next_steps"])
 
     write(output_file, "\n".join(out))
+
+def _generate_readme_step(skewer_data, step_data):
+    out = list()
+
+    if "preamble" in step_data:
+        out.append("")
+        out.append(step_data["preamble"])
+
+    if "commands" in step_data:
+        for context_name, commands in step_data["commands"].items():
+            namespace = skewer_data["contexts"][context_name]["namespace"]
+
+            out.append("")
+            out.append(f"Console for _{namespace}_:")
+            out.append("")
+            out.append("~~~ shell")
+
+            for command in commands:
+                out.append(command["run"])
+
+            out.append("~~~")
+
+    if "postamble" in step_data:
+        out.append("")
+        out.append(step_data["postamble"])
+
+    return "\n".join(out)
 
 class _StringCatalog(dict):
     def __init__(self, path):
@@ -209,7 +266,7 @@ class _StringCatalog(dict):
 
             if line.startswith("[") and line.endswith("]"):
                 if key:
-                    self[key] = "".join(out).strip() + "\n"
+                    self[key] = "".join(out).strip()
 
                 out = list()
                 key = line[1:-1]
@@ -217,9 +274,9 @@ class _StringCatalog(dict):
                 continue
 
             out.append(line)
-            out.append("\r\n")
+            out.append("\n")
 
-        self[key] = "".join(out).strip() + "\n"
+        self[key] = "".join(out).strip()
 
     def __repr__(self):
         return format_repr(self)
