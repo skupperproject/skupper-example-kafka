@@ -12,10 +12,13 @@ overview: |-
     The cluster has a topic named "topic1".
 
   * A Kafka client running in the public cloud.  It sends 10 messages
-    to "topic1" and then receives them back.
+    to "topic1" and then receives them back.  The client is a Java
+    application built using [Quarkus][quarkus].
 
   The example uses two Kubernetes namespaces, "private" and "public",
   to represent the private data center and public cloud.
+
+  [quarkus]: https://quarkus.io/
 prerequisites: !string prerequisites
 contexts:
   public:
@@ -34,8 +37,8 @@ steps:
         - run: export KUBECONFIG=~/.kube/config-private
   - title: Log in to your clusters
     preamble: !string log_in_to_your_clusters_preamble
-  - title: Set the current namespaces
-    preamble: !string set_the_current_namespaces_preamble
+  - title: Set up your namespaces
+    preamble: !string set_up_your_namespaces_preamble
     commands:
       public:
         - run: kubectl create namespace public
@@ -76,9 +79,18 @@ steps:
       public:
         - run: kubectl get services
           await: [service/cluster1-kafka-brokers]
-  - title: Run the client
+  - title: Run the client program
     commands:
       public:
         - run: kubectl run client --attach --rm --restart Never --image quay.io/skupper/kafka-example-client --env BOOTSTRAP_SERVERS=cluster1-kafka-brokers:9092
-
-# kubectl delete namespace/public namespace/private && kubectl delete -f strimzi.yaml
+cleaning_up:
+  preamble: !string cleaning_up_preamble
+  commands:
+    private:
+      - run: skupper delete
+      - run: kubectl delete -f topic1.yaml
+      - run: kubectl delete -f cluster1.yaml
+      - run: kubectl delete -f strimzi.yaml
+    public:
+      - run: skupper delete
+next_steps: !string next_steps
