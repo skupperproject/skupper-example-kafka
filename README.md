@@ -186,16 +186,18 @@ skupper link status --wait 30
 
 
 To set up the Kafka cluster, this example uses the Kubernetes
-operator from the [Strimzi] project.  Use the `kubectl create`
-and `apply` commands with the listed YAML files to install the
-operator and deploy the Kafka cluster and topic.
+operator from the [Strimzi][strimzi] project.  Use the `kubectl
+create` and `kubectl apply` commands with the listed YAML files
+to install the operator and deploy the cluster and topic.
+
+[strimzi]: https://strimzi.io/
 
 Console for _private_:
 
 ~~~ shell
 kubectl create -f strimzi.yaml
 kubectl apply -f cluster1.yaml
-kubectl wait --for condition=ready --timeout 360s kafka/cluster1
+kubectl wait --for condition=ready --timeout 540s kafka/cluster1
 kubectl apply -f topic1.yaml
 ~~~
 

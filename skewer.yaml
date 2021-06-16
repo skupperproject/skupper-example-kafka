@@ -66,14 +66,16 @@ steps:
   - title: Deploy the Kafka cluster
     preamble: |-
       To set up the Kafka cluster, this example uses the Kubernetes
-      operator from the [Strimzi] project.  Use the `kubectl create`
-      and `apply` commands with the listed YAML files to install the
-      operator and deploy the Kafka cluster and topic.
+      operator from the [Strimzi][strimzi] project.  Use the `kubectl
+      create` and `kubectl apply` commands with the listed YAML files
+      to install the operator and deploy the cluster and topic.
+
+      [strimzi]: https://strimzi.io/
     commands:
       private:
         - run: kubectl create -f strimzi.yaml
         - run: kubectl apply -f cluster1.yaml
-        - run: kubectl wait --for condition=ready --timeout 360s kafka/cluster1
+        - run: kubectl wait --for condition=ready --timeout 540s kafka/cluster1
         - run: kubectl apply -f topic1.yaml
           sleep: 10
         # - run: kubectl wait --for condition=ready --timeout 180s kafka/topic1
