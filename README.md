@@ -185,6 +185,11 @@ skupper link status --wait 30
 ## Step 6: Deploy the Kafka cluster
 
 
+To set up the Kafka cluster, this example uses the Kubernetes
+operator from the [Strimzi] project.  Use the `kubectl create`
+and `apply` commands with the listed YAML files to install the
+operator and deploy the Kafka cluster and topic.
+
 Console for _private_:
 
 ~~~ shell
@@ -230,7 +235,7 @@ Console for _public_:
 kubectl run client --attach --rm --restart Never --image quay.io/skupper/kafka-example-client --env BOOTSTRAP_SERVERS=cluster1-kafka-brokers:9092
 ~~~
 
-To see the client code running here, look in the [`client`
+To see the client code, look in the [`client`
 subdirectory](client) of this project.
 
 ## Cleaning up

@@ -64,6 +64,11 @@ steps:
         - run: skupper link create ~/public.token
         - run: skupper link status --wait 30
   - title: Deploy the Kafka cluster
+    preamble: |-
+      To set up the Kafka cluster, this example uses the Kubernetes
+      operator from the [Strimzi] project.  Use the `kubectl create`
+      and `apply` commands with the listed YAML files to install the
+      operator and deploy the Kafka cluster and topic.
     commands:
       private:
         - run: kubectl create -f strimzi.yaml
@@ -96,7 +101,7 @@ steps:
       public:
         - run: kubectl run client --attach --rm --restart Never --image quay.io/skupper/kafka-example-client --env BOOTSTRAP_SERVERS=cluster1-kafka-brokers:9092
     postamble: |-
-      To see the client code running here, look in the [`client`
+      To see the client code, look in the [`client`
       subdirectory](client) of this project.
 cleaning_up:
   preamble: !string cleaning_up_preamble
