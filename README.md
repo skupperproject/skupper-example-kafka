@@ -38,12 +38,16 @@ It contains two services:
   The cluster has a topic named "topic1".
 
 * A Kafka client running in the public cloud.  It sends 10 messages
-  to "topic1" and then receives them back.  The client is a Java
-  application built using [Quarkus][quarkus].
+  to "topic1" and then receives them back.
+
+To set up the Kafka cluster, this example uses the Kubernetes
+operator from the [Strimzi][strimzi] project.  The Kafka client is a
+Java application built using [Quarkus][quarkus].
 
 The example uses two Kubernetes namespaces, "private" and "public",
 to represent the private data center and public cloud.
 
+[strimzi]: https://strimzi.io/
 [quarkus]: https://quarkus.io/
 
 ## Prerequisites
@@ -185,12 +189,9 @@ skupper link status --wait 30
 ## Step 6: Deploy the Kafka cluster
 
 
-To set up the Kafka cluster, this example uses the Kubernetes
-operator from the [Strimzi][strimzi] project.  Use the `kubectl
-create` and `kubectl apply` commands with the listed YAML files
-to install the operator and deploy the cluster and topic.
-
-[strimzi]: https://strimzi.io/
+In the private namespace, use the `kubectl create` and `kubectl
+apply` commands with the listed YAML files to install the
+operator and deploy the cluster and topic.
 
 Console for _private_:
 
@@ -228,8 +229,7 @@ kubectl get services
 
 
 Use the `kubectl run` command to execute the client program in
-the public namespace, connecting to the Kafka cluster in the
-private namespace.
+the public namespace.
 
 Console for _public_:
 
@@ -237,7 +237,7 @@ Console for _public_:
 kubectl run client --attach --rm --restart Never --image quay.io/skupper/kafka-example-client --env BOOTSTRAP_SERVERS=cluster1-kafka-brokers:9092
 ~~~
 
-To see the client code, look in the [`client`
+To see the client code, look in the [client
 subdirectory](client) of this project.
 
 ## Cleaning up

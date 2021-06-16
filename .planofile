@@ -13,8 +13,12 @@ def render(app):
     Render README.html from the data in skewer.yaml
     """
     check_program("pandoc")
+
     generate(app)
+
     run(f"pandoc -o README.html README.md")
+
+    print(f"file:{get_real_path('README.html')}")
 
 @command
 def test(app):
