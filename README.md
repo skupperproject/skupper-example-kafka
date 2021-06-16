@@ -197,6 +197,14 @@ kubectl apply -f topic1.yaml
 ## Step 7: Expose the Kafka cluster
 
 
+In the private namespace, use `skupper expose` with the
+`--headless` option to expose the Kafka cluster as a headless
+service on the Skupper network.
+
+Then, in the public namespace, use `kubectl get services` to
+check that the `cluster1-kafka-brokers` service appears after a
+moment.
+
 Console for _private_:
 
 ~~~ shell
@@ -212,11 +220,18 @@ kubectl get services
 ## Step 8: Run the client program
 
 
+Use the `kubectl run` command to execute the client program in
+the public namespace, connecting to the Kafka cluster in the
+private namespace.
+
 Console for _public_:
 
 ~~~ shell
 kubectl run client --attach --rm --restart Never --image quay.io/skupper/kafka-example-client --env BOOTSTRAP_SERVERS=cluster1-kafka-brokers:9092
 ~~~
+
+To see the client code running here, look in the [`client`
+subdirectory](client) of this project.
 
 ## Cleaning up
 
