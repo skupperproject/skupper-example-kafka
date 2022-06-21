@@ -294,11 +294,77 @@ operator and deploy the cluster and topic.
 _**Console for private:**_
 
 ~~~ shell
-kubectl create -f strimzi.yaml
-kubectl apply -f cluster1.yaml
+kubectl create -f kafka-cluster/strimzi.yaml
+kubectl apply -f kafka-cluster/cluster1.yaml
 kubectl wait --for condition=ready --timeout 900s kafka/cluster1
-kubectl apply -f topic1.yaml
 ~~~
+
+_Sample output:_
+
+~~~ console
+$ kubectl create -f kafka-cluster/strimzi.yaml
+customresourcedefinition.apiextensions.k8s.io/kafkas.kafka.strimzi.io created
+rolebinding.rbac.authorization.k8s.io/strimzi-cluster-operator-entity-operator-delegation created
+clusterrolebinding.rbac.authorization.k8s.io/strimzi-cluster-operator created
+rolebinding.rbac.authorization.k8s.io/strimzi-cluster-operator-topic-operator-delegation created
+customresourcedefinition.apiextensions.k8s.io/kafkausers.kafka.strimzi.io created
+customresourcedefinition.apiextensions.k8s.io/kafkarebalances.kafka.strimzi.io created
+deployment.apps/strimzi-cluster-operator created
+customresourcedefinition.apiextensions.k8s.io/kafkamirrormaker2s.kafka.strimzi.io created
+clusterrole.rbac.authorization.k8s.io/strimzi-entity-operator created
+clusterrole.rbac.authorization.k8s.io/strimzi-cluster-operator-global created
+clusterrolebinding.rbac.authorization.k8s.io/strimzi-cluster-operator-kafka-broker-delegation created
+rolebinding.rbac.authorization.k8s.io/strimzi-cluster-operator created
+clusterrole.rbac.authorization.k8s.io/strimzi-cluster-operator-namespaced created
+clusterrole.rbac.authorization.k8s.io/strimzi-topic-operator created
+clusterrolebinding.rbac.authorization.k8s.io/strimzi-cluster-operator-kafka-client-delegation created
+clusterrole.rbac.authorization.k8s.io/strimzi-kafka-client created
+serviceaccount/strimzi-cluster-operator created
+clusterrole.rbac.authorization.k8s.io/strimzi-kafka-broker created
+customresourcedefinition.apiextensions.k8s.io/kafkatopics.kafka.strimzi.io created
+customresourcedefinition.apiextensions.k8s.io/kafkabridges.kafka.strimzi.io created
+customresourcedefinition.apiextensions.k8s.io/kafkaconnectors.kafka.strimzi.io created
+customresourcedefinition.apiextensions.k8s.io/kafkaconnects2is.kafka.strimzi.io created
+customresourcedefinition.apiextensions.k8s.io/kafkaconnects.kafka.strimzi.io created
+customresourcedefinition.apiextensions.k8s.io/kafkamirrormakers.kafka.strimzi.io created
+configmap/strimzi-cluster-operator created
+
+$ kubectl apply -f kafka-cluster/cluster1.yaml
+kafka.kafka.strimzi.io/cluster1 created
+kafkatopic.kafka.strimzi.io/topic1 created
+
+$ kubectl wait --for condition=ready --timeout 900s kafka/cluster1
+kafka.kafka.strimzi.io/cluster1 condition met
+~~~
+
+**Note:**
+
+By default, the Kafka bootstrap server returns broker addresses
+that include the Kubernetes namespace in their domain name.
+When, as in this example, the Kafka client is running in a
+namespace with a different name from that of the Kafka cluster,
+this prevents the client from resolving the Kafka brokers.
+
+To make the Kafka brokers reachable, set the `advertisedHost`
+property of each broker to a domain name that the Kafka client
+can resolve at the remote site.  In this example, this is
+achieved with the following listener configuration:
+
+~~~ yaml
+spec:
+  kafka:
+    listeners:
+      - name: plain
+        configuration:
+          brokers:
+            - broker: 0
+              advertisedHost: cluster1-kafka-0.cluster1-kafka-brokers
+~~~
+
+See [Advertised addresses for brokers][advertised-addresses] for
+more information.
+
+[advertised-addresses][https://strimzi.io/docs/operators/in-development/configuring.html#property-listener-config-broker-reference]
 
 ## Step 8: Expose the Kafka cluster
 
@@ -306,9 +372,9 @@ In the private namespace, use `skupper expose` with the
 `--headless` option to expose the Kafka cluster as a headless
 service on the Skupper network.
 
-Then, in the public namespace, use `kubectl get services` to
-check that the `cluster1-kafka-brokers` service appears after a
-moment.
+Then, in the public namespace, use the `kubectl get service`
+command to check that the `cluster1-kafka-brokers` service
+appears after a moment.
 
 _**Console for private:**_
 
@@ -316,10 +382,25 @@ _**Console for private:**_
 skupper expose statefulset/cluster1-kafka --headless --port 9092
 ~~~
 
+_Sample output:_
+
+~~~ console
+$ skupper expose statefulset/cluster1-kafka --headless --port 9092
+statefulset cluster1-kafka exposed as cluster1-kafka-brokers
+~~~
+
 _**Console for public:**_
 
 ~~~ shell
-kubectl get services
+kubectl get service/cluster1-kafka-brokers
+~~~
+
+_Sample output:_
+
+~~~ console
+$ kubectl get service/cluster1-kafka-brokers
+NAME                     TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)    AGE
+cluster1-kafka-brokers   ClusterIP   None         <none>        9092/TCP   2s
 ~~~
 
 ## Step 9: Run the client program
@@ -333,8 +414,27 @@ _**Console for public:**_
 kubectl run client --attach --rm --restart Never --image quay.io/skupper/kafka-example-client --env BOOTSTRAP_SERVERS=cluster1-kafka-brokers:9092
 ~~~
 
-To see the client code, look in the [client
-subdirectory](client) of this project.
+_Sample output:_
+
+~~~ console
+$ kubectl run client --attach --rm --restart Never --image quay.io/skupper/kafka-example-client --env BOOTSTRAP_SERVERS=cluster1-kafka-brokers:9092
+[...]
+Received message 1
+Received message 2
+Received message 3
+Received message 4
+Received message 5
+Received message 6
+Received message 7
+Received message 8
+Received message 9
+Received message 10
+Result: OK
+[...]
+~~~
+
+To see the client code, look in the [kafka-client
+subdirectory](kafka-client) of this project.
 
 ## Accessing the web console
 
@@ -379,7 +479,6 @@ _**Console for private:**_
 
 ~~~ shell
 skupper delete
-kubectl delete -f topic1.yaml
 kubectl delete -f cluster1.yaml
 kubectl delete -f strimzi.yaml
 ~~~
