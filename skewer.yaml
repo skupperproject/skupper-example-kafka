@@ -1,7 +1,7 @@
 title: Accessing a Kafka cluster using Skupper
 subtitle: Use public cloud resources to process data from a private Kafka cluster
-github_actions_url: https://github.com/ssorj/skupper-example-kafka/actions/workflows/main.yaml
-overview: |-
+github_actions_url: https://github.com/skupperproject/skupper-example-kafka/actions/workflows/main.yaml
+overview: |
   This example is a simple Kafka application that shows how you can
   use Skupper to access a Kafka cluster at a remote site without
   exposing it to the public internet.
@@ -23,8 +23,7 @@ overview: |-
 
   [strimzi]: https://strimzi.io/
   [quarkus]: https://quarkus.io/
-prerequisites: !string prerequisites
-contexts:
+sites:
   public:
     kubeconfig: ~/.kube/config-public
     namespace: public
@@ -32,43 +31,14 @@ contexts:
     kubeconfig: ~/.kube/config-private
     namespace: private
 steps:
-  - title: Configure separate console sessions
-    preamble: !string configure_separate_console_sessions_preamble
-    commands:
-      public:
-        - run: export KUBECONFIG=~/.kube/config-public
-      private:
-        - run: export KUBECONFIG=~/.kube/config-private
-  - title: Log in to your clusters
-    preamble: !string log_in_to_your_clusters_preamble
-  - title: Set up your namespaces
-    preamble: !string set_up_your_namespaces_preamble
-    commands:
-      public:
-        - run: kubectl create namespace public
-        - run: kubectl config set-context --current --namespace public
-      private:
-        - run: kubectl create namespace private
-        - run: kubectl config set-context --current --namespace private
-  - title: Install Skupper in your namespaces
-    preamble: !string install_skupper_in_your_namespaces_preamble
-    commands:
-      public:
-        - run: skupper init
-          await: [deployment/skupper-service-controller, deployment/skupper-router]
-      private:
-        - run: skupper init --ingress none
-          await: [deployment/skupper-service-controller, deployment/skupper-router]
-  - title: Link your namespaces
-    preamble: !string link_your_namespaces_preamble
-    commands:
-      public:
-        - run: skupper token create ~/public.token
-      private:
-        - run: skupper link create ~/public.token
-        - run: skupper link status --wait 30
+  - standard: configure_separate_console_sessions
+  - standard: access_your_clusters
+  - standard: set_up_your_namespaces
+  - standard: install_skupper_in_your_namespaces
+  - standard: check_the_status_of_your_namespaces
+  - standard: link_your_namespaces
   - title: Deploy the Kafka cluster
-    preamble: |-
+    preamble: |
       In the private namespace, use the `kubectl create` and `kubectl
       apply` commands with the listed YAML files to install the
       operator and deploy the cluster and topic.
@@ -76,12 +46,13 @@ steps:
       private:
         - run: kubectl create -f strimzi.yaml
         - run: kubectl apply -f cluster1.yaml
-        - run: kubectl wait --for condition=ready --timeout 540s kafka/cluster1
+        - run: kubectl wait --for condition=ready --timeout 900s kafka/cluster1
         - run: kubectl apply -f topic1.yaml
-          sleep: 10
+        - run: sleep 10
+          apply: test # XXX
         # - run: kubectl wait --for condition=ready --timeout 180s kafka/topic1
   - title: Expose the Kafka cluster
-    preamble: |-
+    preamble: |
       In the private namespace, use `skupper expose` with the
       `--headless` option to expose the Kafka cluster as a headless
       service on the Skupper network.
@@ -94,25 +65,24 @@ steps:
         - run: skupper expose statefulset/cluster1-kafka --headless --port 9092
       public:
         - run: kubectl get services
-          await: [service/cluster1-kafka-brokers]
   - title: Run the client program
-    preamble: |-
+    preamble: |
       Use the `kubectl run` command to execute the client program in
       the public namespace.
     commands:
       public:
+        - await: service/cluster1-kafka-brokers
         - run: kubectl run client --attach --rm --restart Never --image quay.io/skupper/kafka-example-client --env BOOTSTRAP_SERVERS=cluster1-kafka-brokers:9092
-    postamble: |-
+    postamble: |
       To see the client code, look in the [client
       subdirectory](client) of this project.
-cleaning_up:
-  preamble: !string cleaning_up_preamble
-  commands:
-    private:
-      - run: skupper delete
-      - run: kubectl delete -f topic1.yaml
-      - run: kubectl delete -f cluster1.yaml
-      - run: kubectl delete -f strimzi.yaml
-    public:
-      - run: skupper delete
-next_steps: !string next_steps
+  - standard: accessing_the_web_console
+  - standard: cleaning_up
+    commands:
+      private:
+        - run: skupper delete
+        - run: kubectl delete -f topic1.yaml
+        - run: kubectl delete -f cluster1.yaml
+        - run: kubectl delete -f strimzi.yaml
+      public:
+        - run: skupper delete
