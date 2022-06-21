@@ -355,6 +355,9 @@ spec:
   kafka:
     listeners:
       - name: plain
+        port: 9092
+        type: internal
+        tls: false
         configuration:
           brokers:
             - broker: 0
@@ -364,7 +367,7 @@ spec:
 See [Advertised addresses for brokers][advertised-addresses] for
 more information.
 
-[advertised-addresses][https://strimzi.io/docs/operators/in-development/configuring.html#property-listener-config-broker-reference]
+[advertised-addresses]: https://strimzi.io/docs/operators/in-development/configuring.html#property-listener-config-broker-reference
 
 ## Step 8: Expose the Kafka cluster
 
