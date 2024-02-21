@@ -370,7 +370,7 @@ cluster1-kafka-brokers   ClusterIP   None         <none>        9092/TCP   2s
 ## Step 7: Run the client
 
 Use the `kubectl run` command to execute the client program in
-the public namespace.
+Public.
 
 _**Public:**_
 
@@ -409,8 +409,8 @@ _**Private:**_
 
 ~~~ shell
 skupper delete
-kubectl delete -f cluster1.yaml
-kubectl delete -f strimzi.yaml
+kubectl delete -f kafka-cluster/cluster1.yaml
+kubectl delete -f kafka-cluster/strimzi.yaml
 ~~~
 
 _**Public:**_
