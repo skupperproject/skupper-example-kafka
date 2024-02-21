@@ -125,6 +125,7 @@ steps:
       moment.
     commands:
       private:
+        - await_resource: statefulset/cluster1-kafka
         - run: skupper expose statefulset/cluster1-kafka --headless --port 9092
           output: |
             statefulset cluster1-kafka exposed as cluster1-kafka-brokers
