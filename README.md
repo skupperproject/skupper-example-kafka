@@ -143,15 +143,15 @@ deploy the cluster and topic.
 _**Private:**_
 
 ~~~ shell
-kubectl create -f kafka-cluster/strimzi.yaml
-kubectl apply -f kafka-cluster/cluster1.yaml
+kubectl create -f server/strimzi.yaml
+kubectl apply -f server/cluster1.yaml
 kubectl wait --for condition=ready --timeout 900s kafka/cluster1
 ~~~
 
 _Sample output:_
 
 ~~~ console
-$ kubectl create -f kafka-cluster/strimzi.yaml
+$ kubectl create -f server/strimzi.yaml
 customresourcedefinition.apiextensions.k8s.io/kafkas.kafka.strimzi.io created
 rolebinding.rbac.authorization.k8s.io/strimzi-cluster-operator-entity-operator-delegation created
 clusterrolebinding.rbac.authorization.k8s.io/strimzi-cluster-operator created
@@ -178,7 +178,7 @@ customresourcedefinition.apiextensions.k8s.io/kafkaconnects.kafka.strimzi.io cre
 customresourcedefinition.apiextensions.k8s.io/kafkamirrormakers.kafka.strimzi.io created
 configmap/strimzi-cluster-operator created
 
-$ kubectl apply -f kafka-cluster/cluster1.yaml
+$ kubectl apply -f server/cluster1.yaml
 kafka.kafka.strimzi.io/cluster1 created
 kafkatopic.kafka.strimzi.io/topic1 created
 
@@ -409,8 +409,8 @@ _**Private:**_
 
 ~~~ shell
 skupper delete
-kubectl delete -f kafka-cluster/cluster1.yaml
-kubectl delete -f kafka-cluster/strimzi.yaml
+kubectl delete -f server/cluster1.yaml
+kubectl delete -f server/strimzi.yaml
 ~~~
 
 _**Public:**_

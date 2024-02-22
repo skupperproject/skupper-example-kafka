@@ -45,7 +45,7 @@ steps:
       deploy the cluster and topic.
     commands:
       private:
-        - run: kubectl create -f kafka-cluster/strimzi.yaml
+        - run: kubectl create -f server/strimzi.yaml
           output: |
             customresourcedefinition.apiextensions.k8s.io/kafkas.kafka.strimzi.io created
             rolebinding.rbac.authorization.k8s.io/strimzi-cluster-operator-entity-operator-delegation created
@@ -72,7 +72,7 @@ steps:
             customresourcedefinition.apiextensions.k8s.io/kafkaconnects.kafka.strimzi.io created
             customresourcedefinition.apiextensions.k8s.io/kafkamirrormakers.kafka.strimzi.io created
             configmap/strimzi-cluster-operator created
-        - run: kubectl apply -f kafka-cluster/cluster1.yaml
+        - run: kubectl apply -f server/cluster1.yaml
           output: |
             kafka.kafka.strimzi.io/cluster1 created
             kafkatopic.kafka.strimzi.io/topic1 created
@@ -164,7 +164,7 @@ steps:
     commands:
       private:
         - run: skupper delete
-        - run: kubectl delete -f kafka-cluster/cluster1.yaml
-        - run: kubectl delete -f kafka-cluster/strimzi.yaml
+        - run: kubectl delete -f server/cluster1.yaml
+        - run: kubectl delete -f server/strimzi.yaml
       public:
         - run: skupper delete
