@@ -397,8 +397,8 @@ Result: OK
 [...]
 ~~~
 
-To see the client code, look in the [kafka-client
-subdirectory](kafka-client) of this project.
+To see the client code, look in the [client directory](client)
+of this project.
 
 ## Cleaning up
 
