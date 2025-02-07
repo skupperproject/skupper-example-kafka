@@ -105,36 +105,31 @@ steps:
               configuration:
                 brokers:
                   - broker: 0
-                    advertisedHost: cluster1-kafka-0.cluster1-kafka-brokers
+                    advertisedHost: cluster1-kafka-brokers
       ~~~
 
       See [Advertised addresses for brokers][advertised-addresses] for
       more information.
 
       [advertised-addresses]: https://strimzi.io/docs/operators/in-development/configuring.html#property-listener-config-broker-reference
+  - standard: kubernetes/install_cluster_controller
   - standard: kubernetes/create_your_sites
-  - standard: kubernetes/link_your_sites
   - title: Expose the Kafka cluster
     preamble: |
-      In Private, use `skupper expose` with the `--headless` option to
-      expose the Kafka cluster as a headless service on the Skupper
-      network.
+      We will create listeners and connectors to expose the kafka service
+      In Private, we will create a connector.
 
-      Then, in Public, use the `kubectl get service` command to check
-      that the `cluster1-kafka-brokers` service appears after a
-      moment.
+      Then, in Public, we will create a listener.
     commands:
       private:
-        - await_resource: statefulset/cluster1-kafka
-        - run: skupper expose statefulset/cluster1-kafka --headless --port 9092
+        - run: kubectl apply -f ./private-crs/connector.yaml
           output: |
-            statefulset cluster1-kafka exposed as cluster1-kafka-brokers
+            connector.skupper.io/cluster1-kafka created
       public:
-        - await_resource: service/cluster1-kafka-brokers
-        - run: kubectl get service/cluster1-kafka-brokers
+        - run: kubectl apply -f ./public-crs/listener.yaml
           output: |
-            NAME                     TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)    AGE
-            cluster1-kafka-brokers   ClusterIP   None         <none>        9092/TCP   2s
+            listener.skupper.io/cluster1-kafka-brokers created
+  - standard: kubernetes/link_your_sites
   - title: Run the client
     preamble: |
       Use the `kubectl run` command to execute the client program in
@@ -163,8 +158,9 @@ steps:
   - standard: cleaning_up
     commands:
       private:
-        - run: skupper delete
+        - run: skupper site delete --all
         - run: kubectl delete -f server/cluster1.yaml
         - run: kubectl delete -f server/strimzi.yaml
       public:
-        - run: skupper delete
+        - run: kubectl site delete --all
+      

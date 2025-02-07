@@ -14,7 +14,7 @@ spec:
         configuration:
           brokers:
             - broker: 0
-              advertisedHost: cluster1-kafka-0.cluster1-kafka-brokers
+              advertisedHost: cluster1-kafka-brokers
       - name: tls
         port: 9093
         type: internal

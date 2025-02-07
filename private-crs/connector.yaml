@@ -1,0 +1,8 @@
+apiVersion: skupper.io/v2alpha1
+kind: Connector
+metadata:
+  name: cluster1-kafka-brokers
+spec:
+  routingKey: kafka
+  port: 9092
+  selector: strimzi.io/cluster=cluster1,strimzi.io/kind=Kafka,strimzi.io/name=cluster1-kafka

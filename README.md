@@ -1,6 +1,6 @@
 # Accessing Kafka using Skupper
 
-[![main](https://github.com/skupperproject/skupper-example-kafka/actions/workflows/main.yaml/badge.svg)](https://github.com/skupperproject/skupper-example-kafka/actions/workflows/main.yaml)
+[![main](https://github.com/lynnemorrison/skupper-example-kafka/actions/workflows/main.yaml/badge.svg)](https://github.com/lynnemorrison/skupper-example-kafka/actions/workflows/main.yaml)
 
 #### Use public cloud resources to process data from a private Kafka cluster
 
@@ -18,10 +18,11 @@ across cloud providers, data centers, and edge sites.
 * [Step 1: Install the Skupper command-line tool](#step-1-install-the-skupper-command-line-tool)
 * [Step 2: Set up your namespaces](#step-2-set-up-your-namespaces)
 * [Step 3: Deploy the Kafka cluster](#step-3-deploy-the-kafka-cluster)
-* [Step 4: Create your sites](#step-4-create-your-sites)
-* [Step 5: Link your sites](#step-5-link-your-sites)
+* [Step 4: Install Skupper Controller](#step-4-install-skupper-controller)
+* [Step 5: Create your sites](#step-5-create-your-sites)
 * [Step 6: Expose the Kafka cluster](#step-6-expose-the-kafka-cluster)
-* [Step 7: Run the client](#step-7-run-the-client)
+* [Step 7: Link your sites](#step-7-link-your-sites)
+* [Step 8: Run the client](#step-8-run-the-client)
 * [Cleaning up](#cleaning-up)
 * [Summary](#summary)
 * [Next steps](#next-steps)
@@ -72,7 +73,7 @@ On Linux or Mac, you can use the install script (inspect it
 [here][install-script]) to download and extract the command:
 
 ~~~ shell
-curl https://skupper.io/install.sh | sh
+curl https://skupper.io/install.sh | sh -s -- --version 2.0.0-preview-2
 ~~~
 
 The script installs the command under your home directory.  It
@@ -210,7 +211,7 @@ spec:
         configuration:
           brokers:
             - broker: 0
-              advertisedHost: cluster1-kafka-0.cluster1-kafka-brokers
+              advertisedHost: cluster1-kafka-brokers
 ~~~
 
 See [Advertised addresses for brokers][advertised-addresses] for
@@ -218,111 +219,168 @@ more information.
 
 [advertised-addresses]: https://strimzi.io/docs/operators/in-development/configuring.html#property-listener-config-broker-reference
 
-## Step 4: Create your sites
+## Step 4: Install Skupper Controller
+
+Create a Skupper Controller at cluster scope.  All Skupper routers in the
+cluster can share one controller.  The Skupper Controller will be created in
+skupper namespace.
+
+Use the `kubectl apply` command to declaratively create the controller
+in the kubernetes skupper namespace.
+Then use `kubectl get pods -n skupper` to see the outcome
+
+_**Public:**_
+
+~~~ shell
+kubectl apply -f https://github.com/skupperproject/skupper/releases/download/2.0.0-preview-2/skupper-setup-cluster-scope.yaml
+~~~
+
+_Sample output:_
+
+~~~ console
+$ kubectl apply -f https://github.com/skupperproject/skupper/releases/download/2.0.0-preview-2/skupper-setup-cluster-scope.yaml
+customresourcedefinition.apiextensions.k8s.io/accessgrants.skupper.io created
+customresourcedefinition.apiextensions.k8s.io/accesstokens.skupper.io created
+customresourcedefinition.apiextensions.k8s.io/attachedconnectorbindings.skupper.io created
+customresourcedefinition.apiextensions.k8s.io/attachedconnectors.skupper.io created
+customresourcedefinition.apiextensions.k8s.io/certificates.skupper.io created
+customresourcedefinition.apiextensions.k8s.io/connectors.skupper.io created
+customresourcedefinition.apiextensions.k8s.io/links.skupper.io created
+customresourcedefinition.apiextensions.k8s.io/listeners.skupper.io created
+customresourcedefinition.apiextensions.k8s.io/routeraccesses.skupper.io created
+customresourcedefinition.apiextensions.k8s.io/securedaccesses.skupper.io created
+customresourcedefinition.apiextensions.k8s.io/sites.skupper.io created
+namespace/skupper created
+serviceaccount/skupper-controller created
+clusterrole.rbac.authorization.k8s.io/skupper-controller unchanged
+clusterrolebinding.rbac.authorization.k8s.io/skupper-controller unchanged
+deployment.apps/skupper-controller created
+~~~
+
+## Step 5: Create your sites
 
 A Skupper _site_ is a location where components of your
 application are running.  Sites are linked together to form a
 network for your application.  In Kubernetes, a site is associated
 with a namespace.
 
-For each namespace, use `skupper init` to create a site.  This
-deploys the Skupper router and controller.  Then use `skupper
-status` to see the outcome.
+Use the `kubectl apply` command to declaratively create sites
+in the kubernetes namespaces. This deploys the Skupper router.
+Then use `kubectl get site` to see the outcome.
 
 **Note:** If you are using Minikube, you need to [start minikube
-tunnel][minikube-tunnel] before you run `skupper init`.
+tunnel][minikube-tunnel] before you start the Skupper router.
 
 [minikube-tunnel]: https://skupper.io/start/minikube.html#running-minikube-tunnel
 
 _**Public:**_
 
 ~~~ shell
-skupper init
-skupper status
-~~~
-
-_Sample output:_
-
-~~~ console
-$ skupper init
-Waiting for LoadBalancer IP or hostname...
-Waiting for status...
-Skupper is now installed in namespace 'public'.  Use 'skupper status' to get more information.
-
-$ skupper status
-Skupper is enabled for namespace "public". It is not connected to any other sites. It has no exposed services.
+kubectl apply -f ./public-crs/site.yaml
+kubectl wait --for condition=Ready --timeout=60s site/public
 ~~~
 
 _**Private:**_
 
 ~~~ shell
-skupper init
-skupper status
+kubectl apply -f ./private-crs/site.yaml
+kubectl wait --for condition=Ready --timeout=60s site/private
+~~~
+
+As you move through the steps below, you can use `kubectl get` at
+any time to check your progress.
+
+## Step 6: Expose the Kafka cluster
+
+We will create listeners and connectors to expose the kafka service
+In Private, we will create a connector.
+
+Then, in Public, we will create a listener.
+
+_**Private:**_
+
+~~~ shell
+kubectl apply -f ./private-crs/connector.yaml
 ~~~
 
 _Sample output:_
 
 ~~~ console
-$ skupper init
-Waiting for LoadBalancer IP or hostname...
-Waiting for status...
-Skupper is now installed in namespace 'private'.  Use 'skupper status' to get more information.
-
-$ skupper status
-Skupper is enabled for namespace "private". It is not connected to any other sites. It has no exposed services.
+$ kubectl apply -f ./private-crs/connector.yaml
+connector.skupper.io/cluster1-kafka created
 ~~~
 
-As you move through the steps below, you can use `skupper status` at
-any time to check your progress.
+_**Public:**_
 
-## Step 5: Link your sites
+~~~ shell
+kubectl apply -f ./public-crs/listener.yaml
+~~~
+
+_Sample output:_
+
+~~~ console
+$ kubectl apply -f ./public-crs/listener.yaml
+listener.skupper.io/cluster1-kafka-brokers created
+~~~
+
+## Step 7: Link your sites
 
 A Skupper _link_ is a channel for communication between two sites.
 Links serve as a transport for application connections and
 requests.
 
 Creating a link requires use of two `skupper` commands in
-conjunction, `skupper token create` and `skupper link create`.
+conjunction, `skupper token issue` and `skupper token redeem`.
 
-The `skupper token create` command generates a secret token that
+The `skupper token issue` command generates a secret token that
 signifies permission to create a link.  The token also carries the
-link details.  Then, in a remote site, The `skupper link
-create` command uses the token to create a link to the site
+link details.  Then, in a remote site, The `skupper token
+redeem` command uses the token to create a link to the site
 that generated it.
 
 **Note:** The link token is truly a *secret*.  Anyone who has the
 token can link to your site.  Make sure that only those you trust
 have access to it.
 
-First, use `skupper token create` in site Public to generate the
-token.  Then, use `skupper link create` in site Private to link
+First, use `skupper token issue` in site Public to generate the
+token.  Then, use `skupper token redeem` in site Private to link
 the sites.
 
 _**Public:**_
 
 ~~~ shell
-skupper token create ~/secret.token
+skupper token issue ~/secret.token
 ~~~
 
 _Sample output:_
 
 ~~~ console
-$ skupper token create ~/secret.token
-Token written to ~/secret.token
+$ skupper token issue ~/secret.token
+Waiting for token status ...
+Grant "public-720124c4-3d8a-453e-9096-fac2c6d68ac9" is ready
+Token file /home/user/secret.token created
+
+Transfer this file to a remote site. At the remote site,
+create a link to this site using the "skupper token redeem" command:
+
+  skupper token redeem <file>
+
+The token expires after 1 use(s) or after 15m0s.Token written to ~/secret.token
 ~~~
 
 _**Private:**_
 
 ~~~ shell
-skupper link create ~/secret.token
+skupper token redeem ~/secret.token
 ~~~
 
 _Sample output:_
 
 ~~~ console
-$ skupper link create ~/secret.token
-Site configured to link to https://10.105.193.154:8081/ed9c37f6-d78a-11ec-a8c7-04421a4c5042 (name=link1)
-Check the status of the link using 'skupper link status'.
+$ skupper token redeem ~/secret.token
+Waiting for token status ...
+Token "public-720124c4-3d8a-453e-9096-fac2c6d68ac9" has been redeemed
+You can now safely delete /home/user/secret.token
 ~~~
 
 If your terminal sessions are on different machines, you may need
@@ -330,44 +388,7 @@ to use `scp` or a similar tool to transfer the token securely.  By
 default, tokens expire after a single use or 15 minutes after
 creation.
 
-## Step 6: Expose the Kafka cluster
-
-In Private, use `skupper expose` with the `--headless` option to
-expose the Kafka cluster as a headless service on the Skupper
-network.
-
-Then, in Public, use the `kubectl get service` command to check
-that the `cluster1-kafka-brokers` service appears after a
-moment.
-
-_**Private:**_
-
-~~~ shell
-skupper expose statefulset/cluster1-kafka --headless --port 9092
-~~~
-
-_Sample output:_
-
-~~~ console
-$ skupper expose statefulset/cluster1-kafka --headless --port 9092
-statefulset cluster1-kafka exposed as cluster1-kafka-brokers
-~~~
-
-_**Public:**_
-
-~~~ shell
-kubectl get service/cluster1-kafka-brokers
-~~~
-
-_Sample output:_
-
-~~~ console
-$ kubectl get service/cluster1-kafka-brokers
-NAME                     TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)    AGE
-cluster1-kafka-brokers   ClusterIP   None         <none>        9092/TCP   2s
-~~~
-
-## Step 7: Run the client
+## Step 8: Run the client
 
 Use the `kubectl run` command to execute the client program in
 Public.
@@ -408,7 +429,7 @@ the following commands.
 _**Private:**_
 
 ~~~ shell
-skupper delete
+skupper site delete --all
 kubectl delete -f server/cluster1.yaml
 kubectl delete -f server/strimzi.yaml
 ~~~
@@ -416,7 +437,7 @@ kubectl delete -f server/strimzi.yaml
 _**Public:**_
 
 ~~~ shell
-skupper delete
+kubectl site delete --all
 ~~~
 
 ## Next steps

@@ -28,7 +28,7 @@ install_the_skupper_command_line_tool:
     [here][install-script]) to download and extract the command:
 
     ~~~ shell
-    curl https://skupper.io/install.sh | sh
+    curl https://skupper.io/install.sh | sh -s -- --version 2.0.0-preview-2
     ~~~
 
     The script installs the command under your home directory.  It
@@ -103,6 +103,37 @@ kubernetes/set_up_your_kubernetes_namespace:
       - run: "# Enter your provider-specific login command"
       - run: kubectl create namespace @namespace@
       - run: kubectl config set-context --current --namespace @namespace@
+kubernetes/install_cluster_controller:
+  title: Install Skupper Controller
+  platform: kubernetes
+  preamble: |
+    Create a Skupper Controller at cluster scope.  All Skupper routers in the
+    cluster can share one controller.  The Skupper Controller will be created in
+    skupper namespace.
+
+    Use the `kubectl apply` command to declaratively create the controller
+    in the kubernetes skupper namespace.
+    Then use `kubectl get pods -n skupper` to see the outcome
+  commands:
+    "0":
+      - run: kubectl apply -f https://github.com/skupperproject/skupper/releases/download/2.0.0-preview-2/skupper-setup-cluster-scope.yaml
+        output: |
+          customresourcedefinition.apiextensions.k8s.io/accessgrants.skupper.io created
+          customresourcedefinition.apiextensions.k8s.io/accesstokens.skupper.io created
+          customresourcedefinition.apiextensions.k8s.io/attachedconnectorbindings.skupper.io created
+          customresourcedefinition.apiextensions.k8s.io/attachedconnectors.skupper.io created
+          customresourcedefinition.apiextensions.k8s.io/certificates.skupper.io created
+          customresourcedefinition.apiextensions.k8s.io/connectors.skupper.io created
+          customresourcedefinition.apiextensions.k8s.io/links.skupper.io created
+          customresourcedefinition.apiextensions.k8s.io/listeners.skupper.io created
+          customresourcedefinition.apiextensions.k8s.io/routeraccesses.skupper.io created
+          customresourcedefinition.apiextensions.k8s.io/securedaccesses.skupper.io created
+          customresourcedefinition.apiextensions.k8s.io/sites.skupper.io created
+          namespace/skupper created
+          serviceaccount/skupper-controller created
+          clusterrole.rbac.authorization.k8s.io/skupper-controller unchanged
+          clusterrolebinding.rbac.authorization.k8s.io/skupper-controller unchanged
+          deployment.apps/skupper-controller created
 kubernetes/create_your_sites:
   title: Create your sites
   platform: kubernetes
@@ -112,26 +143,30 @@ kubernetes/create_your_sites:
     network for your application.  In Kubernetes, a site is associated
     with a namespace.
 
-    For each namespace, use `skupper init` to create a site.  This
-    deploys the Skupper router and controller.  Then use `skupper
-    status` to see the outcome.
+    Use the `kubectl apply` command to declaratively create sites
+    in the kubernetes namespaces. This deploys the Skupper router.
+    Then use `kubectl get site` to see the outcome.
 
     **Note:** If you are using Minikube, you need to [start minikube
-    tunnel][minikube-tunnel] before you run `skupper init`.
+    tunnel][minikube-tunnel] before you start the Skupper router.
 
     [minikube-tunnel]: https://skupper.io/start/minikube.html#running-minikube-tunnel
   commands:
-    "*":
-      - run: skupper init
-        output: |
-          Waiting for LoadBalancer IP or hostname...
-          Waiting for status...
-          Skupper is now installed in namespace '@namespace@'.  Use 'skupper status' to get more information.
-      - run: skupper status
-        output: |
-          Skupper is enabled for namespace "@namespace@". It is not connected to any other sites. It has no exposed services.
+    "0":
+    - run: kubectl apply -f ./public-crs/site.yaml
+    - run: kubectl wait --for condition=Ready --timeout=60s site/public
+    output:
+      site.skupper.io/public created
+      site.skupper.io/public condition met
+    "1":
+    - run: kubectl apply -f ./private-crs/site.yaml
+    - run: kubectl wait --for condition=Ready --timeout=60s site/private
+    output: |
+      site.skupper.io/private created
+    output: |
+      site.skupper.io/private condition met
   postamble: |
-    As you move through the steps below, you can use `skupper status` at
+    As you move through the steps below, you can use `kubectl get` at
     any time to check your progress.
 podman/set_up_your_podman_network:
   title: Set up your Podman network
@@ -208,30 +243,41 @@ kubernetes/link_your_sites:
     requests.
 
     Creating a link requires use of two `skupper` commands in
-    conjunction, `skupper token create` and `skupper link create`.
+    conjunction, `skupper token issue` and `skupper token redeem`.
 
-    The `skupper token create` command generates a secret token that
+    The `skupper token issue` command generates a secret token that
     signifies permission to create a link.  The token also carries the
-    link details.  Then, in a remote site, The `skupper link
-    create` command uses the token to create a link to the site
+    link details.  Then, in a remote site, The `skupper token
+    redeem` command uses the token to create a link to the site
     that generated it.
 
     **Note:** The link token is truly a *secret*.  Anyone who has the
     token can link to your site.  Make sure that only those you trust
     have access to it.
 
-    First, use `skupper token create` in site @site0@ to generate the
-    token.  Then, use `skupper link create` in site @site1@ to link
+    First, use `skupper token issue` in site @site0@ to generate the
+    token.  Then, use `skupper token redeem` in site @site1@ to link
     the sites.
   commands:
     "0":
-      - run: skupper token create ~/secret.token
-        output: Token written to ~/secret.token
-    "1":
-      - run: skupper link create ~/secret.token
+      - run: skupper token issue ~/secret.token
         output: |
-          Site configured to link to https://10.105.193.154:8081/ed9c37f6-d78a-11ec-a8c7-04421a4c5042 (name=link1)
-          Check the status of the link using 'skupper link status'.
+          Waiting for token status ...
+          Grant "public-720124c4-3d8a-453e-9096-fac2c6d68ac9" is ready
+          Token file /home/user/secret.token created
+
+          Transfer this file to a remote site. At the remote site,
+          create a link to this site using the "skupper token redeem" command:
+
+            skupper token redeem <file>
+
+          The token expires after 1 use(s) or after 15m0s.Token written to ~/secret.token
+    "1":
+      - run: skupper token redeem ~/secret.token
+        output: |
+          Waiting for token status ...
+          Token "public-720124c4-3d8a-453e-9096-fac2c6d68ac9" has been redeemed
+          You can now safely delete /home/user/secret.token
       - run: skupper link status --wait 60
         apply: test
   postamble: |
