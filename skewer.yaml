@@ -36,8 +36,9 @@ sites:
     env:
       KUBECONFIG: ~/.kube/config-private
 steps:
-  - standard: install_the_skupper_command_line_tool
-  - standard: kubernetes/set_up_your_namespaces
+  - standard: platform/install_the_skupper_command_line_tool
+  - standard: platform/access_your_kubernetes_clusters
+  - standard: platform/install_skupper_on_your_kubernetes_clusters
   - title: Deploy the Kafka cluster
     preamble: |
       In Private, use the `kubectl create` and `kubectl apply`
@@ -112,8 +113,35 @@ steps:
       more information.
 
       [advertised-addresses]: https://strimzi.io/docs/operators/in-development/configuring.html#property-listener-config-broker-reference
-  - standard: kubernetes/install_cluster_controller
-  - standard: kubernetes/create_your_sites
+  - title: Create your sites
+    preamble: |
+      A Skupper _site_ is a location where components of your
+      application are running.  Sites are linked together to form a
+      network for your application.  In Kubernetes, a site is associated
+      with a namespace.
+
+      Use the kubectl apply command to declaratively create sites in the kubernetes
+      namespaces. This deploys the Skupper router. Then use kubectl get site to see
+      the outcome.
+
+      **Note:** If you are using Minikube, you need to [start minikube
+      tunnel][minikube-tunnel] before you run `skupper init`.
+
+      [minikube-tunnel]: https://skupper.io/start/minikube.html#running-minikube-tunnel
+    commands:
+      private:
+        - run: kubectl apply -f ./private-crs/site.yaml
+        - run: kubectl wait --for condition=Ready --timeout=60s site/private
+          output: |
+            site.skupper.io/private created
+            site.skupper.io/private condition met
+      public:
+        - run: kubectl apply -f ./public-crs/site.yaml
+        - run: kubectl wait --for condition=Ready --timeout=60s site/public
+          output: |
+            site.skupper.io/public created
+            site.skupper.io/public condition met
+  - standard: skupper/link_your_sites/kubernetes_cli
   - title: Expose the Kafka cluster
     preamble: |
       We will create listeners and connectors to expose the kafka service
@@ -129,7 +157,6 @@ steps:
         - run: kubectl apply -f ./public-crs/listener.yaml
           output: |
             listener.skupper.io/cluster1-kafka-brokers created
-  - standard: kubernetes/link_your_sites
   - title: Run the client
     preamble: |
       Use the `kubectl run` command to execute the client program in
@@ -155,12 +182,15 @@ steps:
     postamble: |
       To see the client code, look in the [client directory](client)
       of this project.
-  - standard: cleaning_up
+  - title: Cleaning Up
+    preamble: |
+      To test remove Skupper and the other resources from this exercise, use
+      the following commands.
     commands:
       private:
         - run: skupper site delete --all
         - run: kubectl delete -f server/cluster1.yaml
         - run: kubectl delete -f server/strimzi.yaml
       public:
-        - run: kubectl site delete --all
+        - run: skupper site delete --all
       

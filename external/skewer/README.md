@@ -8,6 +8,15 @@ A `skewer.yaml` file describes the steps and commands to achieve an
 objective using Skupper.  Skewer takes the `skewer.yaml` file as input
 and produces two outputs: a `README.md` file and a test routine.
 
+#### Contents
+
+* [An example example](#an-example-example)
+* [Setting up Skewer for your own example](#setting-up-skewer-for-your-own-example)
+* [Skewer YAML](#skewer-yaml)
+* [Standard steps](#standard-steps)
+* [Demo mode](#demo-mode)
+* [Troubleshooting](#troubleshooting)
+
 ## An example example
 
 [Example `skewer.yaml` file](example/skewer.yaml)
@@ -28,8 +37,8 @@ Change directory to the root of your example project:
 Add the Skewer code as a subdirectory:
 
     mkdir -p external
-    curl -sfL https://github.com/skupperproject/skewer/archive/main.tar.gz | tar -C external -xz
-    mv external/skewer-main external/skewer
+    curl -sfL https://github.com/skupperproject/skewer/archive/v2.tar.gz | tar -C external -xz
+    mv external/skewer-2 external/skewer
 
 Symlink the Skewer and Plano libraries into your `python` directory:
 
@@ -89,7 +98,7 @@ commands:
 
 ## Skewer YAML
 
-The top level:
+The top level of the `skewer.yaml` file:
 
 ~~~ yaml
 title:              # Your example's title (required)
@@ -103,7 +112,18 @@ summary:            # Text to summarize what the user did (optional)
 next_steps:         # Text linking to more examples (optional, has default text)
 ~~~
 
-To disable the GitHub workflow, set it to `null`.
+For fields with default text such as `prerequisites` and `next_steps`,
+you can include the default text inside your custom text by using the
+`@default@` placeholder:
+
+~~~ yaml
+next_steps:
+    @default@
+
+    This Way to the Egress.
+~~~
+
+To disable the GitHub workflow and CI badge, set `workflow` to `null`.
 
 A **site**:
 
@@ -167,77 +187,25 @@ steps:
       west: <list-of-commands>
 ~~~
 
-Or you can use a named step from the library of standard steps:
-
-~~~ yaml
-- standard: configure_separate_console_sessions
-~~~
-
-The standard steps are defined in
-[python/skewer/standardsteps.yaml](python/skewer/standardsteps.yaml).
-Note that you should not edit this file.  Instead, in your
-`skewer.yaml` file, you can create custom steps based on the standard
-steps.  You can override the `title`, `preamble`, `commands`, or
-`postamble` field of a standard step by adding the field in addition
-to `standard`:
-
-~~~ yaml
-- standard: cleaning_up
-  commands:
-    east:
-     - run: skupper delete
-     - run: kubectl delete deployment/database
-    west:
-     - run: skupper delete
-~~~
-
-A typical mix of standard and custom steps might look like this:
-
-~~~ yaml
-steps:
-  - standard: install_the_skupper_command_line_tool
-  - standard: kubernetes/set_up_your_namespaces
-  <your-custom-deploy-step>
-  - standard: kubernetes/create_your_sites
-  - standard: kubernetes/link_your_sites
-  <your-custom-expose-step>
-  <your-custom-access-step>
-  - standard: cleaning_up
-~~~
-
-**Note:** The `link_your_sites` and `cleaning_up` steps are less
-generic than the other steps.  For example, `cleaning_up` doesn't
-delete any application workoads.  Check that the text and commands
-these steps produce are doing what you need for your example.  If not,
-you need to provide a custom step.
-
-There are some standard steps for examples based on the Skupper
-Hello World application:
-
-~~~ yaml
-- standard: hello_world/deploy_the_frontend_and_backend
-- standard: hello_world/expose_the_backend
-- standard: hello_world/access_the_frontend
-- standard: hello_world/cleaning_up
-~~~
-
-And finally there are some special cases:
-~~~ yaml
-- standard: kubernetes/set_up_your_kubernetes_namespace
-- standard: podman/set_up_your_podman_network
-~~~
-
 The step commands are separated into named groups corresponding to the
 sites.  Each named group contains a list of command entries.  Each
 command entry has a `run` field containing a shell command and other
 fields for awaiting completion or providing sample output.
 
+You can also use a named step from the library of [standard
+steps](#standard-steps):
+
+~~~ yaml
+- standard: kubernetes/access_your_kubernetes_clusters
+~~~
+
 A **command**:
 
 ~~~ yaml
 - run:              # A shell command (required)
-  apply:            # Use this command only for "readme" or "test" (optional, default is both)
+  apply:            # Use this command only for "readme" or "test" (default is both)
   output:           # Sample output to include in the README (optional)
+  expect_failure:   # If true, check that the command fails and keep going (default false)
 ~~~
 
 Only the `run` and `output` fields are used in the README content.
@@ -277,6 +245,111 @@ commands:
         backend       ClusterIP      10.102.112.121   <none>           8080/TCP        30s
 ~~~
 
+## Standard steps
+
+Skewer includes a library of standard steps with descriptive text and
+commands that we use a lot for our examples.
+
+The standard steps are defined in
+[python/skewer/standardsteps.yaml](python/skewer/standardsteps.yaml).
+They fall in three groups.
+
+Steps for setting up platforms:
+
+~~~
+platform/access_your_kubernetes_clusters
+platform/access_your_kubernetes_cluster
+platform/set_up_your_podman_environments
+platform/set_up_your_podman_environment
+platform/install_skupper_on_your_kubernetes_clusters
+platform/install_skupper_on_your_kubernetes_cluster
+platform/install_skupper_in_your_podman_environments
+platform/install_skupper_in_your_podman_environment
+~~~
+
+Steps for primary Skupper operations:
+
+~~~
+skupper/create_your_sites/kubernetes_cli
+skupper/create_your_sites/podman_cli
+skupper/link_your_sites/kubernetes_cli
+skupper/link_your_sites/podman_cli
+skupper/cleaning_up/kubernetes_cli
+skupper/cleaning_up/podman_cli
+~~~
+
+<!-- skupper/create_your_sites/kubernetes_yaml -->
+<!-- skupper/create_your_sites/podman_yaml -->
+<!-- skupper/link_your_sites/kubernetes_yaml -->
+<!-- skupper/link_your_sites/podman_yaml -->
+<!-- skupper/cleaning_up/kubernetes_yaml -->
+<!-- skupper/cleaning_up/podman_yaml -->
+
+Steps specific to the Hello World application:
+
+~~~
+hello_world/deploy_the_frontend_and_backend/kubernetes_cli
+hello_world/expose_the_backend_service/kubernetes_cli
+hello_world/access_the_frontend_service/kubernetes_cli
+hello_world/cleaning_up/kubernetes_cli
+~~~
+
+<!-- hello_world/deploy_the_frontend_and_backend/kubernetes_yaml -->
+<!-- hello_world/expose_the_backend_service/kubernetes_yaml -->
+<!-- hello_world/access_the_frontend_service/kubernetes_yaml -->
+<!-- hello_world/cleaning_up/kubernetes_yaml -->
+
+Some of the steps have a suffix indicating their target platform and
+interface: `kubernetes_cli`, `kubernetes_yaml`, `podman_cli`, and
+`podman_yaml`.
+
+**Note:** The `link_your_sites` and `cleaning_up` steps are less
+generic than some of the other steps.  For example, `cleaning_up`
+doesn't delete any application workoads.  Check that the text and
+commands these steps produce are doing what you need for your example.
+If not, you need to provide a custom step.
+
+You can create custom steps based on the standard steps by overriding
+the `title`, `preamble`, `commands`, or `postamble` fields.
+
+~~~ yaml
+- standard: skupper/cleaning_up/kubernetes_cli
+  commands:
+    east:
+     - run: skupper delete
+     - run: kubectl delete deployment/database
+    west:
+     - run: skupper delete
+~~~
+
+For string fields such as `preamble` and `postamble`, you can include
+the standard text inside your custom text by using the `@default@`
+placeholder:
+
+~~~ yaml
+- standard: skupper/cleaning_up/kubernetes_cli
+  preamble: |
+    @default@
+
+    Note: You may also want to flirp your krupke.
+~~~
+
+A typical mix of standard and custom steps for a Kubernetes-based
+example might look like this:
+
+~~~ yaml
+steps:
+  - standard: platform/set_up_your_kubernetes_clusters
+  - <your-custom-deploy-step>
+  - standard: platform/install_the_skupper_command_line_tool
+  - standard: platform/install_skupper_on_your_kubernetes_clusters
+  - standard: skupper/create_your_sites/kubernetes_cli
+  - standard: skupper/link_your_sites/kubernetes_cli
+  - <your-custom-expose-step>
+  - <your-custom-access-step>
+  - standard: skupper/cleaning_up/kubernetes_cli
+~~~
+
 ## Demo mode
 
 Skewer has a mode where it executes all the steps, but before cleaning
@@ -285,3 +358,24 @@ up and exiting, it pauses so you can inspect things.
 It is enabled by setting the environment variable `SKEWER_DEMO` to any
 value when you call `./plano run` or one of its variants.  You can
 also use `./plano demo`, which sets the variable for you.
+
+## Troubleshooting
+
+### Subnet is already used
+
+Error:
+
+~~~ console
+plano: notice: Starting Minikube
+plano: notice: Running command 'minikube start -p skewer --auto-update-drivers false'
+* Creating podman container (CPUs=2, Memory=16000MB) ...- E0229 05:44:29.821273   12224 network_create.go:113] error while trying to create podman network skewer 192.168.49.0/24: create podman network skewer 192.168.49.0/24 with gateway 192.168.49.1 and MTU of 0: sudo -n podman network create --driver=bridge --subnet=192.168.49.0/24 --gateway=192.168.49.1 --label=created_by.minikube.sigs.k8s.io=true --label=name.minikube.sigs.k8s.io=skewer skewer: exit status 125
+
+Error: subnet 192.168.49.0/24 is already used on the host or by another config
+~~~
+
+Remove the existing Podman network.  Note that it might belong to
+another user on the host.
+
+~~~ shell
+sudo podman network rm minikube
+~~~
