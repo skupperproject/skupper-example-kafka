@@ -1,8 +1,17 @@
 apiVersion: skupper.io/v2alpha1
 kind: Connector
 metadata:
-  name: cluster1-kafka-brokers
+  name: cluster1-kafka-0
 spec:
-  routingKey: kafka
+  routingKey: kafka0
   port: 9092
-  selector: strimzi.io/cluster=cluster1,strimzi.io/kind=Kafka,strimzi.io/name=cluster1-kafka
+  selector: strimzi.io/pod-name=cluster1-kafka-0
+---
+apiVersion: skupper.io/v2alpha1
+kind: Connector
+metadata:
+  name: cluster1-kafka-1
+spec:
+  routingKey: kafka1
+  port: 9092
+  selector: strimzi.io/pod-name=cluster1-kafka-1

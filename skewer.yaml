@@ -106,7 +106,9 @@ steps:
               configuration:
                 brokers:
                   - broker: 0
-                    advertisedHost: cluster1-kafka-brokers
+                    advertisedHost: cluster1-kafka-0
+                  - broker: 1
+                    advertisedHost: cluster1-kafka-1
       ~~~
 
       See [Advertised addresses for brokers][advertised-addresses] for
@@ -125,23 +127,66 @@ steps:
       the outcome.
 
       **Note:** If you are using Minikube, you need to [start minikube
-      tunnel][minikube-tunnel] before you run `skupper init`.
+      tunnel][minikube-tunnel] before you create your sites.
 
       [minikube-tunnel]: https://skupper.io/start/minikube.html#running-minikube-tunnel
     commands:
       private:
         - run: kubectl apply -f ./private-crs/site.yaml
-        - run: kubectl wait --for condition=Ready --timeout=60s site/private
+        - run: kubectl wait --for condition=Ready --timeout=3m site/private
           output: |
             site.skupper.io/private created
             site.skupper.io/private condition met
       public:
         - run: kubectl apply -f ./public-crs/site.yaml
-        - run: kubectl wait --for condition=Ready --timeout=60s site/public
+        - run: kubectl wait --for condition=Ready --timeout=3m site/public
           output: |
             site.skupper.io/public created
             site.skupper.io/public condition met
-  - standard: skupper/link_your_sites/kubernetes_cli
+  - title: Link your sites
+    preamble: |
+      A Skupper _link_ is a channel for communication between two sites.
+      Links serve as a transport for application connections and
+      requests.
+
+      Creating a link requires the use of two Skupper commands in
+      conjunction: `skupper token issue` and `skupper token redeem`.
+      The `skupper token issue` command generates a secret token that
+      can be transferred to a remote site and redeemed for a link to the
+      issuing site.  The `skupper token redeem` command uses the token
+      to create the link.
+
+      **Note:** The link token is truly a *secret*.  Anyone who has the
+      token can link to your site.  Make sure that only those you trust
+      have access to it.
+
+      First, use `skupper token issue` in @site0@ to generate the token.
+      Then, use `skupper token redeem` in @site1@ to link the sites.
+    commands:
+      public:
+        - run: skupper token issue ~/secret.token
+          output: |
+            Waiting for token status ...
+
+            Grant "public-cad4f72d-2917-49b9-ab66-cdaca4d6cf9c" is ready
+            Token file /run/user/1000/skewer/secret.token created
+
+            Transfer this file to a remote site. At the remote site,
+            create a link to this site using the "skupper token redeem" command:
+
+              skupper token redeem <file>
+
+            The token expires after 1 use(s) or after 15m0s.
+      private:
+        - run: skupper token redeem ~/secret.token
+          output: |
+            Waiting for token status ...
+            Token "public-cad4f72d-2917-49b9-ab66-cdaca4d6cf9c" has been redeemed
+    postamble: |
+      If your terminal sessions are on different machines, you may need
+      to use `scp` or a similar tool to transfer the token securely.  By
+      default, tokens expire after a single use or 15 minutes after
+      being issued.
   - title: Expose the Kafka cluster
     preamble: |
       We will create listeners and connectors to expose the kafka service
@@ -160,11 +205,12 @@ steps:
   - title: Run the client
     preamble: |
       Use the `kubectl run` command to execute the client program in
-      Public.
+      Public sending to either broker.
     commands:
       public:
-        - await_resource: service/cluster1-kafka-brokers
-        - run: kubectl run client --attach --rm --restart Never --image quay.io/skupper/kafka-example-client --env BOOTSTRAP_SERVERS=cluster1-kafka-brokers:9092
+        - await_resource: service/cluster1-kafka-1
+        - await_resource: service/cluster1-kafka-0
+        - run: kubectl run client --attach --rm --restart Never --image quay.io/skupper/kafka-example-client --env BOOTSTRAP_SERVERS=cluster1-kafka-0:9092
           output: |
             [...]
             Received message 1

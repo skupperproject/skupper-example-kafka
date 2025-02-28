@@ -125,7 +125,7 @@ platform/install_the_skupper_command_line_tool:
     [here][install-script]) to download and extract the command:
 
     ~~~ shell
-    curl https://skupper.io/install.sh | sh -s -- --version 2.0.0-preview-2
+    curl https://skupper.io/install.sh | sh -s -- --version 2.0.0
     ~~~
 
     The script installs the command under your home directory.  It

@@ -1,9 +1,17 @@
 apiVersion: skupper.io/v2alpha1
 kind: Listener
 metadata:
-  name: cluster1-kafka-brokers
+  name: cluster1-kafka-0
 spec:
-  routingKey: kafka
+  routingKey: kafka0
   port: 9092
-  host: cluster1-kafka-brokers
-  exposePodsByName: true
+  host: cluster1-kafka-0
+---
+apiVersion: skupper.io/v2alpha1
+kind: Listener
+metadata:
+  name: cluster1-kafka-1
+spec:
+  routingKey: kafka1
+  port: 9092
+  host: cluster1-kafka-1

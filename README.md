@@ -83,7 +83,7 @@ On Linux or Mac, you can use the install script (inspect it
 [here][install-script]) to download and extract the command:
 
 ~~~ shell
-curl https://skupper.io/install.sh | sh -s -- --version 2.0.0-preview-2
+curl https://skupper.io/install.sh | sh -s -- --version 2.0.0
 ~~~
 
 The script installs the command under your home directory.  It
@@ -229,7 +229,9 @@ spec:
         configuration:
           brokers:
             - broker: 0
-              advertisedHost: cluster1-kafka-brokers
+              advertisedHost: cluster1-kafka-0
+            - broker: 1
+              advertisedHost: cluster1-kafka-1
 ~~~
 
 See [Advertised addresses for brokers][advertised-addresses] for
@@ -249,7 +251,7 @@ namespaces. This deploys the Skupper router. Then use kubectl get site to see
 the outcome.
 
 **Note:** If you are using Minikube, you need to [start minikube
-tunnel][minikube-tunnel] before you run `skupper init`.
+tunnel][minikube-tunnel] before you create your sites.
 
 [minikube-tunnel]: https://skupper.io/start/minikube.html#running-minikube-tunnel
 
@@ -257,13 +259,13 @@ _**Private:**_
 
 ~~~ shell
 kubectl apply -f ./private-crs/site.yaml
-kubectl wait --for condition=Ready --timeout=60s site/private
+kubectl wait --for condition=Ready --timeout=3m site/private
 ~~~
 
 _Sample output:_
 
 ~~~ console
-$ kubectl wait --for condition=Ready --timeout=60s site/private
+$ kubectl wait --for condition=Ready --timeout=3m site/private
 site.skupper.io/private created
 site.skupper.io/private condition met
 ~~~
@@ -272,13 +274,13 @@ _**Public:**_
 
 ~~~ shell
 kubectl apply -f ./public-crs/site.yaml
-kubectl wait --for condition=Ready --timeout=60s site/public
+kubectl wait --for condition=Ready --timeout=3m site/public
 ~~~
 
 _Sample output:_
 
 ~~~ console
-$ kubectl wait --for condition=Ready --timeout=60s site/public
+$ kubectl wait --for condition=Ready --timeout=3m site/public
 site.skupper.io/public created
 site.skupper.io/public condition met
 ~~~
@@ -300,8 +302,8 @@ to create the link.
 token can link to your site.  Make sure that only those you trust
 have access to it.
 
-First, use `skupper token issue` in Public to generate the token.
-Then, use `skupper token redeem` in Private to link the sites.
+First, use `skupper token issue` in @site0@ to generate the token.
+Then, use `skupper token redeem` in @site1@ to link the sites.
 
 _**Public:**_
 
@@ -315,13 +317,13 @@ _Sample output:_
 $ skupper token issue ~/secret.token
 Waiting for token status ...
 
-Grant "west-cad4f72d-2917-49b9-ab66-cdaca4d6cf9c" is ready
+Grant "public-cad4f72d-2917-49b9-ab66-cdaca4d6cf9c" is ready
 Token file /run/user/1000/skewer/secret.token created
 
 Transfer this file to a remote site. At the remote site,
 create a link to this site using the "skupper token redeem" command:
 
-	skupper token redeem <file>
+  skupper token redeem <file>
 
 The token expires after 1 use(s) or after 15m0s.
 ~~~
@@ -337,8 +339,7 @@ _Sample output:_
 ~~~ console
 $ skupper token redeem ~/secret.token
 Waiting for token status ...
-Token "west-cad4f72d-2917-49b9-ab66-cdaca4d6cf9c" has been redeemed
-You can now safely delete /run/user/1000/skewer/secret.token
+Token "public-cad4f72d-2917-49b9-ab66-cdaca4d6cf9c" has been redeemed
 ~~~
 
 If your terminal sessions are on different machines, you may need
@@ -382,18 +383,18 @@ listener.skupper.io/cluster1-kafka-brokers created
 ## Step 8: Run the client
 
 Use the `kubectl run` command to execute the client program in
-Public.
+Public sending to either broker.
 
 _**Public:**_
 
 ~~~ shell
-kubectl run client --attach --rm --restart Never --image quay.io/skupper/kafka-example-client --env BOOTSTRAP_SERVERS=cluster1-kafka-brokers:9092
+kubectl run client --attach --rm --restart Never --image quay.io/skupper/kafka-example-client --env BOOTSTRAP_SERVERS=cluster1-kafka-0:9092
 ~~~
 
 _Sample output:_
 
 ~~~ console
-$ kubectl run client --attach --rm --restart Never --image quay.io/skupper/kafka-example-client --env BOOTSTRAP_SERVERS=cluster1-kafka-brokers:9092
+$ kubectl run client --attach --rm --restart Never --image quay.io/skupper/kafka-example-client --env BOOTSTRAP_SERVERS=cluster1-kafka-0:9092
 [...]
 Received message 1
 Received message 2
