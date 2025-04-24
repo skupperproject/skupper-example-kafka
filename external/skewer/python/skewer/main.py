@@ -28,6 +28,13 @@ __all__ = [
 standard_text = read_yaml(join(get_parent_dir(__file__), "standardtext.yaml"))
 standard_steps = read_yaml(join(get_parent_dir(__file__), "standardsteps.yaml"))
 
+standard_steps_by_old_name = dict()
+
+for name, data in standard_steps.items():
+    if "old_name" in data:
+        data["new_name"] = name
+        standard_steps_by_old_name[data["old_name"]] = data
+
 def check_environment():
     check_program("base64")
     check_program("curl")
@@ -185,8 +192,20 @@ def run_step(model, step, work_dir, check=True):
                 if command.await_console_ok:
                     await_console_ok()
 
+                if command.await_port:
+                    await_port(command.await_port, timeout=300)
+
                 if command.run:
-                    run(command.run.replace("~", work_dir), shell=True, check=check)
+                    proc = run(command.run.replace("~", work_dir), shell=True, check=False)
+
+                    if command.expect_failure:
+                        if proc.exit_code == 0:
+                            fail("A command expected to fail did not fail")
+
+                        continue
+
+                    if check and proc.exit_code > 0:
+                        raise PlanoProcessError(proc)
 
 def pause_for_demo(model):
     notice("Pausing for demo time")
@@ -198,10 +217,8 @@ def pause_for_demo(model):
 
     if first_site.platform == "kubernetes":
         with first_site:
-            if resource_exists("service/frontend"):
-                if get_resource_json("service/frontend", ".spec.type") == "LoadBalancer":
-                    frontend_host = await_ingress("service/frontend")
-                    frontend_url = f"http://{frontend_host}:8080/"
+            if resource_exists("deployment/frontend"):
+                frontend_url = f"http://localhost:8080/"
 
             if resource_exists("secret/skupper-console-users"):
                 console_host = await_ingress("service/skupper")
@@ -256,15 +273,14 @@ def print_debug_output(model):
                 run("kubectl get events", check=False)
 
             run("skupper version", check=False)
-            run("skupper status", check=False)
+            run("skupper site status", check=False)
             run("skupper link status", check=False)
-            run("skupper service status", check=False)
-            run("skupper network status", check=False)
-            run("skupper debug events", check=False)
+            run("skupper listener status", check=False)
+            run("skupper connector status", check=False)
 
             if site.platform == "kubernetes":
                 run("kubectl logs deployment/skupper-router", check=False)
-                run("kubectl logs deployment/skupper-service-controller", check=False)
+                # run("kubectl logs deployment/skupper-service-controller", check=False)
 
     print("-- End of debug output")
 
@@ -296,9 +312,9 @@ def generate_readme(skewer_file, output_file):
         if not condition:
             return
 
-        fragment = string_replace(heading, r"[ -]", "_")
-        fragment = string_replace(fragment, r"[\W]", "")
-        fragment = string_replace(fragment, "_", "-")
+        fragment = string_replace_re(heading, r"[ -]", "_")
+        fragment = string_replace_re(fragment, r"[\W]", "")
+        fragment = fragment.replace("_", "-")
         fragment = fragment.lower()
 
         out.append(f"* [{heading}](#{fragment})")
@@ -309,8 +325,11 @@ def generate_readme(skewer_file, output_file):
 
         out.append(f"## {heading}")
         out.append("")
-        out.append(text.strip())
+        out.append(text)
         out.append("")
+
+    out.append("<!-- NOTE: This file is generated from skewer.yaml.  Do not edit it directly. -->")
+    out.append("")
 
     out.append(f"# {model.title}")
     out.append("")
@@ -330,14 +349,14 @@ def generate_readme(skewer_file, output_file):
     out.append("")
 
     append_toc_entry("Overview", model.overview)
-    append_toc_entry("Prerequisites")
+    append_toc_entry("Prerequisites", model.prerequisites)
 
     for step in model.steps:
         append_toc_entry(generate_step_heading(step))
 
-    append_toc_entry("Summary")
-    append_toc_entry("Next steps")
-    append_toc_entry("About this example")
+    append_toc_entry("Summary", model.summary)
+    append_toc_entry("Next steps", model.next_steps)
+    append_toc_entry("About this example", model.about_this_example)
 
     out.append("")
 
@@ -352,7 +371,7 @@ def generate_readme(skewer_file, output_file):
 
     append_section("Summary", model.summary)
     append_section("Next steps", model.next_steps)
-    append_section("About this example", standard_text["about_this_example"].strip())
+    append_section("About this example", model.about_this_example)
 
     write(output_file, "\n".join(out).strip() + "\n")
 
@@ -422,22 +441,33 @@ def apply_standard_steps(model):
         try:
             standard_step_data = standard_steps[standard_step_name]
         except KeyError:
-            fail(f"Standard step '{standard_step_name}' not found")
+            try:
+                standard_step_data = standard_steps_by_old_name[standard_step_name]
+                new_name = standard_step_data["new_name"]
+
+                warning(f"Step '{standard_step_name}' has a new name: '{new_name}'")
+            except KeyError:
+                fail(f"Standard step '{standard_step_name}' not found")
 
         del step.data["standard"]
 
         def apply_attribute(name, default=None):
-            if name not in step.data:
-                value = standard_step_data.get(name, default)
+            standard_value = standard_step_data.get(name, default)
+            value = step.data.get(name, standard_value)
 
-                if value and name in ("title", "preamble", "postamble"):
-                    for i, site in enumerate([x for _, x in model.sites]):
-                        value = value.replace(f"@site{i}@", site.title)
+            if is_string(value):
+                if standard_value is not None:
+                    value = value.replace("@default@", str(nvl(standard_value, "")).strip())
 
-                        if site.namespace:
-                            value = value.replace(f"@namespace{i}@", site.namespace)
+                for i, site in enumerate([x for _, x in model.sites]):
+                    value = value.replace(f"@site{i}@", site.title)
 
-                step.data[name] = value
+                    if site.namespace:
+                        value = value.replace(f"@namespace{i}@", site.namespace)
+
+                value = value.strip()
+
+            step.data[name] = value
 
         apply_attribute("name")
         apply_attribute("title")
@@ -499,13 +529,13 @@ def get_github_owner_repo():
     result = parse_url(url)
 
     if result.scheme == "" and result.path.startswith("git@github.com:"):
-        path = remove_prefix(result.path, "git@github.com:")
-        path = remove_suffix(path, ".git")
+        path = result.path.removeprefix("git@github.com:")
+        path = path.removesuffix(".git")
 
         return path.split("/", 1)
 
     if result.scheme in ("http", "https") and result.netloc == "github.com":
-        path = remove_prefix(result.path, "/")
+        path = result.path.removeprefix("/")
 
         return path.split("/", 1)
 
@@ -513,7 +543,13 @@ def get_github_owner_repo():
 
 def object_property(name, default=None):
     def get(obj):
-        return obj.data.get(name, default)
+        value = obj.data.get(name, default)
+
+        if is_string(value):
+            value = value.replace("@default@", str(nvl(default, "")).strip())
+            value = value.strip()
+
+        return value
 
     return property(get)
 
@@ -534,9 +570,10 @@ class Model:
     subtitle = object_property("subtitle")
     workflow = object_property("workflow", "main.yaml")
     overview = object_property("overview")
-    prerequisites = object_property("prerequisites", standard_text["prerequisites"].strip())
+    prerequisites = object_property("prerequisites", standard_text["prerequisites"])
     summary = object_property("summary")
-    next_steps = object_property("next_steps", standard_text["next_steps"].strip())
+    next_steps = object_property("next_steps", standard_text["next_steps"])
+    about_this_example = object_property("about_this_example", standard_text["about_this_example"])
 
     def __init__(self, skewer_file, kubeconfigs=[]):
         self.skewer_file = skewer_file
@@ -600,7 +637,7 @@ class Site:
         check_required_attributes(self, "platform")
         check_unknown_attributes(self)
 
-        if self.platform not in ("kubernetes", "podman"):
+        if self.platform not in ("kubernetes", "podman", None):
             fail(f"{self} attribute 'platform' has an illegal value: {self.platform}")
 
         if self.platform == "kubernetes":
@@ -660,12 +697,14 @@ class Step:
 
 class Command:
     run = object_property("run")
+    expect_failure = object_property("expect_failure", False)
     apply = object_property("apply")
     output = object_property("output")
     await_resource = object_property("await_resource")
     await_ingress = object_property("await_ingress")
     await_http_ok = object_property("await_http_ok")
     await_console_ok = object_property("await_console_ok")
+    await_port = object_property("await_port")
 
     def __init__(self, model, data):
         self.model = model
@@ -703,23 +742,34 @@ class Minikube:
 
         run("minikube start -p skewer --auto-update-drivers false")
 
-        tunnel_output_file = open(f"{self.work_dir}/minikube-tunnel-output", "w")
-        self.tunnel = start("minikube tunnel -p skewer", output=tunnel_output_file)
+        try:
+            tunnel_output_file = open(f"{self.work_dir}/minikube-tunnel-output", "w")
+            self.tunnel = start("minikube tunnel -p skewer", output=tunnel_output_file)
 
-        model = Model(self.skewer_file)
-        model.check()
+            try:
+                model = Model(self.skewer_file)
+                model.check()
 
-        kube_sites = [x for _, x in model.sites if x.platform == "kubernetes"]
+                kube_sites = [x for _, x in model.sites if x.platform == "kubernetes"]
 
-        for site in kube_sites:
-            kubeconfig = site.env["KUBECONFIG"].replace("~", self.work_dir)
-            site.env["KUBECONFIG"] = kubeconfig
+                for site in kube_sites:
+                    kubeconfig = site.env["KUBECONFIG"]
+                    kubeconfig = kubeconfig.replace("~", self.work_dir)
+                    kubeconfig = expand(kubeconfig)
 
-            self.kubeconfigs.append(kubeconfig)
+                    site.env["KUBECONFIG"] = kubeconfig
 
-            with site:
-                run("minikube update-context -p skewer")
-                check_file(ENV["KUBECONFIG"])
+                    self.kubeconfigs.append(kubeconfig)
+
+                    with site:
+                        run("minikube update-context -p skewer")
+                        check_file(ENV["KUBECONFIG"])
+            except:
+                stop(self.tunnel)
+                raise
+        except:
+            run("minikube delete -p skewer")
+            raise
 
         return self
 
